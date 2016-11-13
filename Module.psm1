@@ -372,7 +372,12 @@ Function Get-ArmResourceGroup
             }
             try {
                 $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders -ErrorAction Continue
-                Write-Output $ArmResult
+                if([String]::IsNullOrEmpty($Name) -eq $false) {
+                    Write-Output $ArmResult
+                }
+                else {
+                    Write-Output $ArmResult.value
+                }
             }
             catch [System.Exception] {
                 Write-Warning $_
