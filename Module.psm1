@@ -206,7 +206,8 @@ Function Get-ArmProvider
                 $ArmUriBld.Path="subscriptions/$item/$Namespace"
             }
             $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders
-            Write-Output $ArmResult            
+            #TODO: Could this page?
+            Write-Output $ArmResult.value
         }
     }
     END
@@ -214,6 +215,110 @@ Function Get-ArmProvider
 
     }
 
+}
+
+Function Get-ArmResourceType
+{
+    [CmdletBinding(DefaultParameterSetName='explicit')]
+    param
+    (
+        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipeline=$true)]
+        [System.String[]]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [System.Object[]]
+        $Subscription,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.String]
+        $ResourceType,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
+        [System.String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.Uri]
+        $ApiEndpoint='https://management.azure.com',
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.String]
+        $ApiVersion='2015-11-01'
+    )
+
+    BEGIN
+    {
+        $AuthHeaders=@{'Authorization'="Bearer $AccessToken"}
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $ArmUriBld.Query="api-version=$ApiVersion"
+    }
+    PROCESS
+    {
+        if($PSCmdlet.ParameterSetName -eq 'object')
+        {
+            foreach ($sub in $Subscription) {
+                $SubscriptionId+=$sub.subscriptionId
+            }
+        }
+        foreach ($item in $SubscriptionId) {
+            $ArmUriBld.Path="subscriptions/$item/providers"
+            if([String]::IsNullOrEmpty($ResourceType) -eq $false) {
+                $Namespace=$ResourceType.Split('/')|Select-Object -First 1
+                $TypeName=$ResourceType.Replace("$Namespace/",[String]::Empty)
+                $ArmUriBld.Path="subscriptions/$item/$Namespace"
+                $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders
+                $ResProvType=$ArmResult.resourceTypes|Where-Object{$_.Name -eq $TypeName }|Select-Object -First 1
+                if ($ResProvType -ne $null) {
+                    Write-Output $ResProvType
+                }
+                else {
+                    Write-Warning "$ResourceType was not found in subscription:$item"
+                }
+            }
+            else {
+                $Providers=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders|Select-Object -ExpandProperty 'value'
+                foreach ($Provider in $Providers)
+                {
+                    Write-Output $Provider.resourceTypes
+                }
+            }
+        }
+    }
+    END
+    {
+
+    }
+
+}
+
+Function Get-ArmResourceTypeApiVersion
+{
+    [CmdletBinding(DefaultParameterSetName='explicit')]
+    param
+    (
+        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipeline=$true)]
+        [System.String[]]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [System.Object[]]
+        $Subscription,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.String]
+        $Namespace,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
+        [System.String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.Uri]
+        $ApiEndpoint='https://management.azure.com',
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.String]
+        $ApiVersion='2015-11-01'
+    )    
 }
 
 Function Get-ArmResourceGroup
