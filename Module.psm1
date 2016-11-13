@@ -814,7 +814,8 @@ Function Get-ArmFeature
                 $SubscriptionId+=$sub.subscriptionId
             }
         }
-        foreach ($item in $SubscriptionId) {
+        foreach ($item in $SubscriptionId) 
+        {
             $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Features/features"
             if([String]::IsNullOrEmpty($Namespace) -eq $false)
             {
@@ -834,4 +835,100 @@ Function Get-ArmFeature
 
     }
 
+}
+
+Function Get-ArmResource
+{
+    [CmdletBinding(DefaultParameterSetName='explicit')]
+    param
+    (
+        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipeline=$true)]
+        [System.String[]]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [System.Object[]]
+        $Subscription,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.String]
+        $ResourceGroup,      
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
+        [System.String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.Uri]
+        $ApiEndpoint='https://management.azure.com',
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.String]
+        $ApiVersion='2016-09-01'
+    )
+    
+    BEGIN
+    {
+        $AuthHeaders=@{'Authorization'="Bearer $AccessToken"}
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $ArmUriBld.Query="api-version=$ApiVersion"
+    }
+    PROCESS
+    {
+        if($PSCmdlet.ParameterSetName -eq 'object')
+        {
+            foreach ($sub in $Subscription) {
+                $SubscriptionId+=$sub.subscriptionId
+            }
+        }
+        foreach ($item in $SubscriptionId) 
+        {
+            $ArmUriBld.Path="subscriptions/$item/resources"
+            if([String]::IsNullOrEmpty($ResourceGroup) -eq $false)
+            {
+                $ArmUriBld.Path="subscriptions/$item/resourceGroups/$ResourceGroup/resources"
+            }
+            try {
+                $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders -ErrorAction Continue
+                Write-Output $ArmResult.value
+            }
+            catch [System.Exception] {
+                Write-Warning $_
+            }          
+        }        
+    }
+    END
+    {
+
+    }
+
+}
+
+Function Get-ArmResourceInstance
+{
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory=$true)]
+        [String[]]
+        $Id,
+        [Parameter(Mandatory=$true)]
+        [System.String]
+        $AccessToken,
+        [Parameter(Mandatory=$true)]
+        [System.Uri]
+        $ApiEndpoint='https://management.azure.com'
+    )
+
+    BEGIN
+    {
+    
+    }
+    PROCESS
+    {
+
+    }
+    END
+    {
+
+    }
 }
