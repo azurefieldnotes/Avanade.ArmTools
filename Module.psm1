@@ -405,7 +405,6 @@ Function Get-ArmResourceType
                 }
             }
             foreach ($item in $SubscriptionId) {
-                $ArmUriBld.Path="subscriptions/$item/providers"
                 if($PSCmdlet.ParameterSetName -in 'objectType','idType') {
                     $ArmUriBld.Path="subscriptions/$item/providers/$Namespace"
                     $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders
@@ -830,10 +829,7 @@ Function Get-ArmFeature
             }          
         }
     }
-    END
-    {
-
-    }
+    END{}
 
 }
 
@@ -896,39 +892,108 @@ Function Get-ArmResource
             }          
         }        
     }
-    END
-    {
-
-    }
+    END{}
 
 }
+
+
+Function ConvertFrom-ArmResourceId
+{
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory=$true,ValueFromPipeline=$true)]
+        [String[]]
+        $Id
+    )
+    BEGIN{}
+    PROCESS
+    {
+        foreach ($ResourceId in $Id) {
+            
+            $IdPieces=$ResourceId.TrimStart('/').Split('/')
+            $LastIndex=$IdPieces.Length-1
+            #Resolve the subscription and provider
+            $SubscriptionId=$IdPieces[1]
+            $Namespace=$IdPieces[5]
+            $ResourceGroup=$IdPieces[3]
+            $Remainder=$IdPieces[6..$LastIndex]
+            $LastIndex=$Remainder.Length-1
+            if($LastIndex -gt 1) {
+                $TypeParts=@()
+                $ResourceName=$Remainder[$LastIndex]
+                for ($i = 0; $i -lt $Remainder.Count; $i+=2) {
+                    $TypeParts+=$Remainder[$i]
+                }
+                $ResourceType=[String]::Join('/',$TypeParts)
+            }
+            else {
+                $ResourceType=$Remainder[0]
+                $ResourceName=$Remainder[1]
+            }
+            $ResourceData=New-Object PSObject -Property @{
+                ResourceId=$ResourceId;
+                SubscriptionId=$SubscriptionId;
+                ResourceGroups=$ResourceGroup;
+                Namespace=$Namespace;
+                ResourceType=$ResourceType;
+                ResourceName=$ResourceName;
+            }
+            Write-Output $ResourceData
+        }
+    }
+    END{}
+}
+
 
 Function Get-ArmResourceInstance
 {
     [CmdletBinding()]
     param
     (
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$true,ValueFromPipeline=$true)]
         [String[]]
         $Id,
         [Parameter(Mandatory=$true)]
         [System.String]
         $AccessToken,
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$false)]
         [System.Uri]
         $ApiEndpoint='https://management.azure.com'
     )
 
     BEGIN
     {
-    
+        $AuthHeaders=@{'Authorization'="Bearer $AccessToken"}
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
     }
     PROCESS
     {
-
+        foreach ($ResourceId in $Id) {
+            $ArmResult=$null
+            $ResourceData=$ResourceId|ConvertFrom-ArmResourceId
+            Write-Verbose "Resource Id=>$ResourceData"
+            #Resolve the api version
+            $ResourceType="$($ResourceData.Namespace)/$($ResourceData.ResourceType)"
+            $ApiVersions=Get-ArmResourceTypeApiVersion -SubscriptionId $ResourceData.SubscriptionId `
+                -ResourceType $ResourceType `
+                -AccessToken $AccessToken -ApiEndpoint $ApiEndpoint
+            foreach ($ApiVersion in $ApiVersions) {
+                Write-Verbose "Requesting instance $ResourceId with API version $ApiVersion"
+                $ArmUriBld.Path=$ResourceData.ResourceId
+                $ArmUriBld.Query="api-version=$ApiVersion"
+                try {
+                    $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders -ErrorAction Stop
+                    break
+                }
+                catch [System.Exception] {
+                    Write-Warning $_
+                }
+            }
+            if ($ArmResult -ne $null) {
+                Write-Output $ArmResult
+            }
+        }
     }
-    END
-    {
-
-    }
+    END{}
 }
