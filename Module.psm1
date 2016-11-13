@@ -158,6 +158,18 @@ Function Get-ArmWebSitePublishingCredential
     }
 }
 
+<#
+    .SYNOPSIS
+        Retrieves Azure subscriptions
+    .PARAMETER SubscriptionId
+        The azure subscription id
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersions
+        The ARM api version
+#>
 Function Get-ArmSubscription
 {
     [CmdletBinding(DefaultParameterSetName='explicit')]
@@ -193,6 +205,22 @@ Function Get-ArmSubscription
     }
 }
 
+<#
+    .SYNOPSIS
+        Retrieves the Azure resource providers
+    .PARAMETER SubscriptionId
+        The azure subscription id(s)
+    .PARAMETER Subscription
+        The azure subscription(s)
+    .PARAMETER Namespace
+        The resource provider namespace
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersions
+        The ARM api version
+#>
 Function Get-ArmProvider
 {
     [CmdletBinding(DefaultParameterSetName='explicit')]
@@ -277,6 +305,24 @@ Function Get-ArmProvider
 
 }
 
+<#
+    .SYNOPSIS
+        Retrieves the Azure resource provider types
+    .PARAMETER SubscriptionId
+        The azure subscription id(s)
+    .PARAMETER Subscription
+        The azure subscription(s)
+    .PARAMETER Namespace
+        The resource group name
+    .PARAMETER ResourceType
+        The fully qualified type name        
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersions
+        The ARM api version
+#>
 Function Get-ArmResourceType
 {
     [CmdletBinding(DefaultParameterSetName='idNamespace')]
@@ -389,6 +435,22 @@ Function Get-ArmResourceType
 
 }
 
+<#
+    .SYNOPSIS
+        Retrieves the Azure resource provider api versions
+    .PARAMETER SubscriptionId
+        The azure subscription id(s)
+    .PARAMETER Subscription
+        The azure subscription(s)
+    .PARAMETER ResourceType
+        The fully qualified type name        
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersions
+        The ARM api version
+#>
 Function Get-ArmResourceTypeApiVersion
 {
     [CmdletBinding(DefaultParameterSetName='explicit')]
@@ -433,6 +495,22 @@ Function Get-ArmResourceTypeApiVersion
     return $ArmResourceType.apiVersions
 }
 
+<#
+    .SYNOPSIS
+        Retrieves the Azure resource groups
+    .PARAMETER SubscriptionId
+        The azure subscription id(s)
+    .PARAMETER Subscription
+        The azure subscription(s)
+    .PARAMETER Name
+        The resource group name
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersions
+        The ARM api version
+#>
 Function Get-ArmResourceGroup
 {
     [CmdletBinding(DefaultParameterSetName='explicit')]
@@ -502,6 +580,23 @@ Function Get-ArmResourceGroup
     }
 }
 
+<#
+    .SYNOPSIS
+        Retrieves a list of Azure locations
+    .PARAMETER SubscriptionId
+        The azure subscription id(s)
+    .PARAMETER Subscription
+        The azure subscription(s)
+    .PARAMETER Location
+        The desired location name or displayName
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersions
+        The ARM api version
+
+#>
 Function Get-ArmLocation
 {
     [CmdletBinding(DefaultParameterSetName='explicit')]
@@ -579,6 +674,159 @@ Function Get-ArmLocation
                 }                
             }
 
+        }
+    }
+    END
+    {
+
+    }
+
+}
+
+Function Get-ArmResourceLock
+{
+    [CmdletBinding(DefaultParameterSetName='explicit')]
+    param
+    (
+        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipeline=$true)]
+        [System.String[]]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [System.Object[]]
+        $Subscription,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.String]
+        $ResourceGroup,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.String]
+        $ResourceType,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.String]
+        $ResourceName,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
+        [System.String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.Uri]
+        $ApiEndpoint='https://management.azure.com',
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.String]
+        $ApiVersion='2015-01-01'
+    )
+
+    BEGIN
+    {
+        $AuthHeaders=@{'Authorization'="Bearer $AccessToken"}
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $ArmUriBld.Query="api-version=$ApiVersion"
+    }
+    PROCESS
+    {
+        if($PSCmdlet.ParameterSetName -eq 'object')
+        {
+            foreach ($sub in $Subscription) {
+                $SubscriptionId+=$sub.subscriptionId
+            }
+        }
+        foreach ($item in $SubscriptionId) {
+            $ArmUriBld.Path="subscriptions/$item"
+            $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json'
+            if([String]::IsNullOrEmpty($ResourceGroup) -eq $false) {
+                $ArmUriBld.Path+="/resourceGroups/$ResourceGroup"
+            }
+            if([String]::IsNullOrEmpty($ResourceType) -eq $false -and [String]::IsNullOrEmpty($ResourceName) -eq $false){
+                $ArmUriBld.Path+="/providers/$ResourceType/$ResourceName"
+            }
+            $ArmUriBld.Path+="/providers/microsoft.authorization/locks"
+            $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json'
+            Write-Output $ArmResult.value
+        }
+    }
+    END
+    {
+
+    }
+
+}
+
+<#
+    .SYNOPSIS
+        Retrieves the provider feature registrations
+    .PARAMETER SubscriptionId
+        The azure subscription id(s)
+    .PARAMETER Subscription
+        The azure subscription(s)
+    .PARAMETER Namespace
+        The provider namespace
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersions
+        The ARM api version
+#>
+Function Get-ArmFeature
+{
+    [CmdletBinding(DefaultParameterSetName='explicit')]
+    param
+    (
+        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipeline=$true)]
+        [System.String[]]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [System.Object[]]
+        $Subscription,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.String]
+        $Namespace,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
+        [System.String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.Uri]
+        $ApiEndpoint='https://management.azure.com',
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.String]
+        $ApiVersion='2015-12-01'
+    )
+
+    BEGIN
+    {
+        $AuthHeaders=@{'Authorization'="Bearer $AccessToken"}
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $ArmUriBld.Query="api-version=$ApiVersion"
+    }
+    PROCESS
+    {
+        if($PSCmdlet.ParameterSetName -eq 'object')
+        {
+            foreach ($sub in $Subscription) {
+                $SubscriptionId+=$sub.subscriptionId
+            }
+        }
+        foreach ($item in $SubscriptionId) {
+            $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Features/features"
+            if([String]::IsNullOrEmpty($Namespace) -eq $false)
+            {
+                $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Features/providers/$Namespace/features"
+            }
+            try {
+                $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders -ErrorAction Continue
+                Write-Output $ArmResult.value
+            }
+            catch [System.Exception] {
+                Write-Warning $_
+            }          
         }
     }
     END
