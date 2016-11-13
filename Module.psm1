@@ -1,3 +1,7 @@
+<#
+    Avanade.ArmTools
+#>
+
 Function Get-ArmWebSite
 {
     [CmdletBinding(DefaultParameterSetName='all')]
@@ -7,25 +11,41 @@ Function Get-ArmWebSite
         [Parameter(Mandatory=$true,ParameterSetName='all')]
         [System.String]
         $SubscriptionId,
+        [Parameter(Mandatory=$true,ParameterSetName='namedObject')]
+        [Parameter(Mandatory=$true,ParameterSetName='allObject')]
+        [System.Object]
+        $Subscription,
+        [Parameter(Mandatory=$true,ParameterSetName='namedObject')]    
         [Parameter(Mandatory=$true,ParameterSetName='named')]
         [System.String]
         $WebsiteName,
+        [Parameter(Mandatory=$true,ParameterSetName='namedObject')]
         [Parameter(Mandatory=$true,ParameterSetName='named')]
         [System.String]
         $ResourceGroupName,
+        [Parameter(Mandatory=$true,ParameterSetName='namedObject')]
         [Parameter(Mandatory=$true,ParameterSetName='named')]
         [Parameter(Mandatory=$true,ParameterSetName='all')]
+        [Parameter(Mandatory=$true,ParameterSetName='allObject')]
         [System.String]
         $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='namedObject')]
         [Parameter(Mandatory=$false,ParameterSetName='named')]
         [Parameter(Mandatory=$false,ParameterSetName='all')]
+        [Parameter(Mandatory=$false,ParameterSetName='allObject')]
         [System.Uri]
         $ApiEndpoint='https://management.azure.com',
+        [Parameter(Mandatory=$false,ParameterSetName='namedObject')]
         [Parameter(Mandatory=$false,ParameterSetName='named')]
         [Parameter(Mandatory=$false,ParameterSetName='all')]
+        [Parameter(Mandatory=$false,ParameterSetName='allObject')]
         [System.String]
         $ApiVersion='2016-08-01'
     )
+
+    if($PSCmdlet.ParameterSetName -in "namedObject","allObject") {
+        $SubscriptionId=$Subscription.subscriptionId
+    }
 
     $Headers=@{
         'Authorization'="Bearer $AccessToken";
@@ -67,7 +87,7 @@ Function Get-ArmWebSite
     }
 }
 
-Function Get-ArmWebSitePublishingCredentials
+Function Get-ArmWebSitePublishingCredential
 {
     [CmdletBinding(DefaultParameterSetName='explicit')]
     param
@@ -75,10 +95,15 @@ Function Get-ArmWebSitePublishingCredentials
         [Parameter(Mandatory=$true,ParameterSetName='explicit')]
         [System.String]
         $SubscriptionId,
+        [Parameter(Mandatory=$true,ParameterSetName='explicitObject')]
+        [System.Object]
+        $Subscription,                
         [Parameter(Mandatory=$true,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$true,ParameterSetName='explicitObject')]
         [System.String]
         $ResourceGroupName,        
         [Parameter(Mandatory=$true,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$true,ParameterSetName='explicitObject')]
         [System.String]
         $WebsiteName,
         [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
@@ -86,14 +111,17 @@ Function Get-ArmWebSitePublishingCredentials
         $Website,
         [Parameter(Mandatory=$true,ParameterSetName='object')]
         [Parameter(Mandatory=$true,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$true,ParameterSetName='explicitObject')]
         [System.String]
         $AccessToken,
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicitObject')]
         [System.Uri]
         $ApiEndpoint='https://management.azure.com',
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicitObject')]
         [System.String]
         $ApiVersion='2016-08-01'
     )
@@ -104,8 +132,12 @@ Function Get-ArmWebSitePublishingCredentials
             'Authorization'="Bearer $AccessToken";
             'Accept'='application/json';
         }
-        if($PSCmdlet.ParameterSetName -eq 'explicit')
+
+        if($PSCmdlet.ParameterSetName -in 'explicit','explicitObject')
         {
+            if ($PSCmdlet.ParameterSetName -eq "explicitObject") {
+                $Subscription.subscriptionId
+            }
             $Website+=Get-ArmWebSite -SubscriptionId $SubscriptionId -ApiEndpoint $ApiEndpoint -ApiVersion $ApiVersion -AccessToken $AccessToken|? name -In $WebsiteName
         }
     }
@@ -302,10 +334,10 @@ Function Get-ArmResourceTypeApiVersion
         [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
         [System.Object[]]
         $Subscription,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
         [System.String]
-        $Namespace,
+        $ResourceType,
         [Parameter(Mandatory=$true,ParameterSetName='object')]
         [Parameter(Mandatory=$true,ParameterSetName='explicit')]
         [System.String]
@@ -318,7 +350,21 @@ Function Get-ArmResourceTypeApiVersion
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [System.String]
         $ApiVersion='2015-11-01'
-    )    
+    )
+
+    switch ($PSCmdlet.ParameterSetName) {
+        "explicit" {
+            $ArmResourceType=Get-ArmResourceType -SubscriptionId $SubscriptionId `
+                -ResourceType $ResourceType -AccessToken $AccessToken `
+                -ApiEndpoint $ApiEndpoint -ApiVersion $ApiVersion
+        }
+        "object" {
+            $ArmResourceType=Get-ArmResourceType -Subscription $Subscription `
+                -ResourceType $ResourceType -AccessToken $AccessToken `
+                -ApiEndpoint $ApiEndpoint -ApiVersion $ApiVersion
+        }
+    }
+    return $ArmResourceType.apiVersions
 }
 
 Function Get-ArmResourceGroup
