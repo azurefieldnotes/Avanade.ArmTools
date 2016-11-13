@@ -185,7 +185,12 @@ Function Get-ArmSubscription
     }
     $AuthHeaders=@{'Authorization'="Bearer $AccessToken"}
     $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders
-    Write-Output $ArmResult
+    if ([string]::IsNullOrEmpty($SubscriptionId) -eq $false) {
+        Write-Output $ArmResult
+    }
+    else {
+        Write-Output $ArmResult.value
+    }
 }
 
 Function Get-ArmProvider
@@ -232,14 +237,19 @@ Function Get-ArmProvider
             }
         }
         foreach ($item in $SubscriptionId) {
-            $ArmUriBld.Path="subscriptions/$item"
+            $ArmUriBld.Path="subscriptions/$item/providers"
             if([String]::IsNullOrEmpty($Namespace) -eq $false)
             {
-                $ArmUriBld.Path="subscriptions/$item/$Namespace"
+                $ArmUriBld.Path="subscriptions/$item/providers/$Namespace"
             }
             $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders
-            #TODO: Could this page?
-            Write-Output $ArmResult.value
+            if([String]::IsNullOrEmpty($Namespace) -eq $false) {
+                Write-Output $ArmResult
+            }
+            else {
+                #TODO: Could this page?
+                Write-Output $ArmResult.value
+            }
         }
     }
     END
@@ -251,29 +261,41 @@ Function Get-ArmProvider
 
 Function Get-ArmResourceType
 {
-    [CmdletBinding(DefaultParameterSetName='explicit')]
+    [CmdletBinding(DefaultParameterSetName='idNamespace')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='idType',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='idNamespace',ValueFromPipeline=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='objectType',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='objectNamespace',ValueFromPipeline=$true)]
         [System.Object[]]
         $Subscription,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$true,ParameterSetName='idNamespace')]
+        [Parameter(Mandatory=$true,ParameterSetName='objectNamespace')]
+        [System.String]
+        $Namespace,
+        [Parameter(Mandatory=$true,ParameterSetName='objectType')]
+        [Parameter(Mandatory=$true,ParameterSetName='idType')]
         [System.String]
         $ResourceType,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$true,ParameterSetName='objectType')]
+        [Parameter(Mandatory=$true,ParameterSetName='objectNamespace')]
+        [Parameter(Mandatory=$true,ParameterSetName='idType')]
+        [Parameter(Mandatory=$true,ParameterSetName='idNamespace')]
         [System.String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='objectType')]
+        [Parameter(Mandatory=$false,ParameterSetName='objectNamespace')]
+        [Parameter(Mandatory=$false,ParameterSetName='idType')]
+        [Parameter(Mandatory=$false,ParameterSetName='idNamespace')]
         [System.Uri]
         $ApiEndpoint='https://management.azure.com',
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='objectType')]
+        [Parameter(Mandatory=$false,ParameterSetName='objectNamespace')]
+        [Parameter(Mandatory=$false,ParameterSetName='idType')]
+        [Parameter(Mandatory=$false,ParameterSetName='idNamespace')]
         [System.String]
         $ApiVersion='2015-11-01'
     )
@@ -294,12 +316,12 @@ Function Get-ArmResourceType
         }
         foreach ($item in $SubscriptionId) {
             $ArmUriBld.Path="subscriptions/$item/providers"
-            if([String]::IsNullOrEmpty($ResourceType) -eq $false) {
+            if($PSCmdlet.ParameterSetName -in 'objectType','idType') {
                 $Namespace=$ResourceType.Split('/')|Select-Object -First 1
                 $TypeName=$ResourceType.Replace("$Namespace/",[String]::Empty)
-                $ArmUriBld.Path="subscriptions/$item/$Namespace"
+                $ArmUriBld.Path="subscriptions/$item/providers/$Namespace"
                 $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders
-                $ResProvType=$ArmResult.resourceTypes|Where-Object{$_.Name -eq $TypeName }|Select-Object -First 1
+                $ResProvType=$ArmResult.resourceTypes|Where-Object{$_.resourceType -eq $TypeName }|Select-Object -First 1
                 if ($ResProvType -ne $null) {
                     Write-Output $ResProvType
                 }
@@ -308,7 +330,8 @@ Function Get-ArmResourceType
                 }
             }
             else {
-                $Providers=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders|Select-Object -ExpandProperty 'value'
+                $ArmUriBld.Path="subscriptions/$item/providers/$Namespace"
+                $Providers=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders
                 foreach ($Provider in $Providers)
                 {
                     Write-Output $Provider.resourceTypes
