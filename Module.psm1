@@ -198,10 +198,10 @@ Function Get-ArmProvider
     [CmdletBinding(DefaultParameterSetName='explicit')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipeline=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipeline=$true)]
         [System.Object[]]
         $Subscription,
         [Parameter(Mandatory=$false,ParameterSetName='object')]
@@ -230,17 +230,12 @@ Function Get-ArmProvider
     }
     PROCESS
     {
-        if($PSCmdlet.ParameterSetName -eq 'object')
-        {
-            foreach ($sub in $Subscription) {
-                $SubscriptionId+=$sub.subscriptionId
-            }
-        }
-        foreach ($item in $SubscriptionId) {
-            $ArmUriBld.Path="subscriptions/$item/providers"
+
+        if($Subscription -eq $null -and [String]::IsNullOrEmpty($SubscriptionId)) {
+            $ArmUriBld.Path="providers"
             if([String]::IsNullOrEmpty($Namespace) -eq $false)
             {
-                $ArmUriBld.Path="subscriptions/$item/providers/$Namespace"
+                $ArmUriBld.Path="providers/$Namespace"
             }
             $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders
             if([String]::IsNullOrEmpty($Namespace) -eq $false) {
@@ -250,6 +245,29 @@ Function Get-ArmProvider
                 #TODO: Could this page?
                 Write-Output $ArmResult.value
             }
+        }
+        else {
+            if($PSCmdlet.ParameterSetName -eq 'object')
+            {
+                foreach ($sub in $Subscription) {
+                    $SubscriptionId+=$sub.subscriptionId
+                }
+            }
+            foreach ($item in $SubscriptionId) {
+                $ArmUriBld.Path="subscriptions/$item/providers"
+                if([String]::IsNullOrEmpty($Namespace) -eq $false)
+                {
+                    $ArmUriBld.Path="subscriptions/$item/providers/$Namespace"
+                }
+                $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders
+                if([String]::IsNullOrEmpty($Namespace) -eq $false) {
+                    Write-Output $ArmResult
+                }
+                else {
+                    #TODO: Could this page?
+                    Write-Output $ArmResult.value
+                }
+            }            
         }
     }
     END
@@ -264,12 +282,12 @@ Function Get-ArmResourceType
     [CmdletBinding(DefaultParameterSetName='idNamespace')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='idType',ValueFromPipeline=$true)]
-        [Parameter(Mandatory=$true,ParameterSetName='idNamespace',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='idType',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='idNamespace',ValueFromPipeline=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$true,ParameterSetName='objectType',ValueFromPipeline=$true)]
-        [Parameter(Mandatory=$true,ParameterSetName='objectNamespace',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='objectType',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='objectNamespace',ValueFromPipeline=$true)]
         [System.Object[]]
         $Subscription,
         [Parameter(Mandatory=$true,ParameterSetName='idNamespace')]
@@ -305,21 +323,16 @@ Function Get-ArmResourceType
         $AuthHeaders=@{'Authorization'="Bearer $AccessToken"}
         $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
         $ArmUriBld.Query="api-version=$ApiVersion"
+        if($PSCmdlet.ParameterSetName -in 'objectType','idType') {
+            $Namespace=$ResourceType.Split('/')|Select-Object -First 1
+            $TypeName=$ResourceType.Replace("$Namespace/",[String]::Empty)
+        }
     }
     PROCESS
     {
-        if($PSCmdlet.ParameterSetName -eq 'object')
-        {
-            foreach ($sub in $Subscription) {
-                $SubscriptionId+=$sub.subscriptionId
-            }
-        }
-        foreach ($item in $SubscriptionId) {
-            $ArmUriBld.Path="subscriptions/$item/providers"
+        if ($Subscription -eq $null -and [String]::IsNullOrEmpty($SubscriptionId)) {
             if($PSCmdlet.ParameterSetName -in 'objectType','idType') {
-                $Namespace=$ResourceType.Split('/')|Select-Object -First 1
-                $TypeName=$ResourceType.Replace("$Namespace/",[String]::Empty)
-                $ArmUriBld.Path="subscriptions/$item/providers/$Namespace"
+                $ArmUriBld.Path="providers/$Namespace"
                 $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders
                 $ResProvType=$ArmResult.resourceTypes|Where-Object{$_.resourceType -eq $TypeName }|Select-Object -First 1
                 if ($ResProvType -ne $null) {
@@ -330,13 +343,43 @@ Function Get-ArmResourceType
                 }
             }
             else {
-                $ArmUriBld.Path="subscriptions/$item/providers/$Namespace"
+                $ArmUriBld.Path="providers/$Namespace"
                 $Providers=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders
                 foreach ($Provider in $Providers)
                 {
                     Write-Output $Provider.resourceTypes
                 }
+            }            
+        }
+        else {
+            if($PSCmdlet.ParameterSetName -eq 'object')
+            {
+                foreach ($sub in $Subscription) {
+                    $SubscriptionId+=$sub.subscriptionId
+                }
             }
+            foreach ($item in $SubscriptionId) {
+                $ArmUriBld.Path="subscriptions/$item/providers"
+                if($PSCmdlet.ParameterSetName -in 'objectType','idType') {
+                    $ArmUriBld.Path="subscriptions/$item/providers/$Namespace"
+                    $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders
+                    $ResProvType=$ArmResult.resourceTypes|Where-Object{$_.resourceType -eq $TypeName }|Select-Object -First 1
+                    if ($ResProvType -ne $null) {
+                        Write-Output $ResProvType
+                    }
+                    else {
+                        Write-Warning "$ResourceType was not found in subscription:$item"
+                    }
+                }
+                else {
+                    $ArmUriBld.Path="subscriptions/$item/providers/$Namespace"
+                    $Providers=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders
+                    foreach ($Provider in $Providers)
+                    {
+                        Write-Output $Provider.resourceTypes
+                    }
+                }
+            }               
         }
     }
     END
@@ -457,4 +500,90 @@ Function Get-ArmResourceGroup
     {
 
     }
+}
+
+Function Get-ArmLocation
+{
+    [CmdletBinding(DefaultParameterSetName='explicit')]
+    param
+    (
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipeline=$true)]
+        [System.String[]]
+        $SubscriptionId,
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipeline=$true)]
+        [System.Object[]]
+        $Subscription,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.String]
+        $Location,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
+        [System.String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.Uri]
+        $ApiEndpoint='https://management.azure.com',
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.String]
+        $ApiVersion='2015-11-01'
+    )
+
+    BEGIN
+    {
+        $AuthHeaders=@{'Authorization'="Bearer $AccessToken"}
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $ArmUriBld.Query="api-version=$ApiVersion"
+    }
+    PROCESS
+    {
+        if ($Subscription -eq $null -and [String]::IsNullOrEmpty($SubscriptionId)) {     
+            $ArmUriBld.Path='locations'
+            $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json'
+            if([String]::IsNullOrEmpty($Location) -eq $false) {
+                $ArmLocation=$ArmResult.value|Where-Object{$_.name -eq $Location -or $_.displayName -eq $Location}|Select-Object -First 1
+                if($ArmLocation -ne $null) {
+                    Write-Output $ArmLocation
+                }
+                else {
+                    Write-Warning "There is no location $Location available"
+                }
+            }
+            else {
+                Write-Output $ArmResult.value
+            }
+        }
+        else {
+            if($PSCmdlet.ParameterSetName -eq 'object')
+            {
+                foreach ($sub in $Subscription) {
+                    $SubscriptionId+=$sub.subscriptionId
+                }
+            }
+            foreach ($item in $SubscriptionId) {
+                $ArmUriBld.Path="subscriptions/$item/locations"
+                $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json'
+                if([String]::IsNullOrEmpty($Location) -eq $false) {
+                $ArmLocation=$ArmResult.value|Where-Object{$_.name -eq $Location -or $_.displayName -eq $Location}|Select-Object -First 1
+                    if($ArmLocation -ne $null) {
+                        Write-Output $ArmLocation
+                    }
+                    else {
+                        Write-Warning "There is no location $Location available"
+                    }
+                }
+                else {
+                    Write-Output $ArmResult.value
+                }                
+            }
+
+        }
+    }
+    END
+    {
+
+    }
+
 }
