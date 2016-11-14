@@ -2,6 +2,32 @@
     Avanade.ArmTools
 #>
 
+$Script:DefaultArmApiVersion="2015-09-01"
+$Script:DefaultResourceLockApiVersion="2015-01-01"
+$Script:DefaultFeatureApiVersion="2015-12-01"
+$Script:DefaultBillingApiVerion='2015-06-01-preview'
+$Script:DefaultArmFrontDoor=$Script:DefaultArmFrontDoor
+
+$Script:Iso3166Regions = @(
+    'AF','AX','AL','DZ','AS','AD','AO','AI','AQ','AG','AR','AM','AW','AU','AT','AZ','BS','BH',
+    'BD','BB','BY','BE','BZ','BJ','BM','BT','BO','BQ','BA','BW','BV','BR','IO','BN','BG','BF',
+    'BI','KH','CM','CA','CV','KY','CF','TD','CL','CN','CX','CC','CO','KM','CG','CD','CK','CR',
+    'CI','HR','CU','CW','CY','CZ','DK','DJ','DM','DO','EC','EG','SV','GQ','ER','EE','ET','FK',
+    'FO','FJ','FI','FR','GF','PF','TF','GA','GM','GE','DE','GH','GI','GR','GL','GD','GP','GU',
+    'GT','GG','GN','GW','GY','HT','HM','VA','HN','HK','HU','IS','IN','ID','IR','IQ','IE','IM',
+    'IL','IT','JM','JP','JE','JO','KZ','KE','KI','KP','KR','KW','KG','LA','LV','LB','LS','LR',
+    'LY','LI','LT','LU','MO','MK','MG','MW','MY','MV','ML','MT','MH','MQ','MR','MU','YT','MX',
+    'FM','MD','MC','MN','ME','MS','MA','MZ','MM','NA','NR','NP','NL','NC','NZ','NI','NE','NG',
+    'NU','NF','MP','NO','OM','PK','PW','PS','PA','PG','PY','PE','PH','PN','PL','PT','PR','QA',
+    'RE','RO','RU','RW','BL','SH','KN','LC','MF','PM','VC','WS','SM','ST','SA','SN','RS','SC',
+    'SL','SG','SX','SK','SI','SB','SO','ZA','GS','SS','ES','LK','SD','SR','SJ','SZ','SE','CH',
+    'SY','TW','TJ','TZ','TH','TL','TG','TK','TO','TT','TN','TR','TM','TC','TV','UG','UA','AE',
+    'GB','US','UM','UY','UZ','VU','VE','VN','VG','VI','WF','EH','YE','ZM','ZW'
+)
+
+$Script:SpecificCultures=[System.Globalization.CultureInfo]::GetCultures([System.Globalization.CultureTypes]::AllCultures -band [System.Globalization.CultureTypes]::SpecificCultures)
+$Script:CultureCodes = ($Script:SpecificCultures|Select-Object -ExpandProperty Name)
+
 Function Get-ArmWebSite
 {
     [CmdletBinding(DefaultParameterSetName='all')]
@@ -34,7 +60,7 @@ Function Get-ArmWebSite
         [Parameter(Mandatory=$false,ParameterSetName='all')]
         [Parameter(Mandatory=$false,ParameterSetName='allObject')]
         [System.Uri]
-        $ApiEndpoint='https://management.azure.com',
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
         [Parameter(Mandatory=$false,ParameterSetName='namedObject')]
         [Parameter(Mandatory=$false,ParameterSetName='named')]
         [Parameter(Mandatory=$false,ParameterSetName='all')]
@@ -118,7 +144,7 @@ Function Get-ArmWebSitePublishingCredential
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [Parameter(Mandatory=$false,ParameterSetName='explicitObject')]
         [System.Uri]
-        $ApiEndpoint='https://management.azure.com',
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [Parameter(Mandatory=$false,ParameterSetName='explicitObject')]
@@ -183,10 +209,10 @@ Function Get-ArmSubscription
         $AccessToken,
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [System.Uri]
-        $ApiEndpoint='https://management.azure.com',
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [System.String]
-        $ApiVersion='2015-11-01'
+        $ApiVersion=$Script:DefaultArmApiVersion
     )
 
     $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
@@ -243,11 +269,11 @@ Function Get-ArmProvider
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [System.Uri]
-        $ApiEndpoint='https://management.azure.com',
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [System.String]
-        $ApiVersion='2015-11-01'
+        $ApiVersion=$Script:DefaultArmApiVersion
     )
 
     BEGIN
@@ -355,13 +381,13 @@ Function Get-ArmResourceType
         [Parameter(Mandatory=$false,ParameterSetName='idType')]
         [Parameter(Mandatory=$false,ParameterSetName='idNamespace')]
         [System.Uri]
-        $ApiEndpoint='https://management.azure.com',
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
         [Parameter(Mandatory=$false,ParameterSetName='objectType')]
         [Parameter(Mandatory=$false,ParameterSetName='objectNamespace')]
         [Parameter(Mandatory=$false,ParameterSetName='idType')]
         [Parameter(Mandatory=$false,ParameterSetName='idNamespace')]
         [System.String]
-        $ApiVersion='2015-11-01'
+        $ApiVersion=$Script:DefaultArmApiVersion
     )
 
     BEGIN
@@ -472,11 +498,11 @@ Function Get-ArmResourceTypeApiVersion
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [System.Uri]
-        $ApiEndpoint='https://management.azure.com',
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [System.String]
-        $ApiVersion='2015-11-01'
+        $ApiVersion=$Script:DefaultArmApiVersion
     )
 
     switch ($PSCmdlet.ParameterSetName) {
@@ -532,11 +558,11 @@ Function Get-ArmResourceGroup
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [System.Uri]
-        $ApiEndpoint='https://management.azure.com',
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [System.String]
-        $ApiVersion='2015-11-01'
+        $ApiVersion=$Script:DefaultArmApiVersion
     )
 
     BEGIN
@@ -618,11 +644,11 @@ Function Get-ArmLocation
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [System.Uri]
-        $ApiEndpoint='https://management.azure.com',
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [System.String]
-        $ApiVersion='2015-11-01'
+        $ApiVersion=$Script:DefaultArmApiVersion
     )
 
     BEGIN
@@ -712,7 +738,7 @@ Function Get-ArmResourceLock
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [System.Uri]
-        $ApiEndpoint='https://management.azure.com',
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [System.String]
@@ -792,7 +818,7 @@ Function Get-ArmFeature
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [System.Uri]
-        $ApiEndpoint='https://management.azure.com',
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [System.String]
@@ -855,11 +881,11 @@ Function Get-ArmResource
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [System.Uri]
-        $ApiEndpoint='https://management.azure.com',
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [System.String]
-        $ApiVersion='2016-09-01'
+        $ApiVersion=$Script:DefaultArmApiVersion
     )
     
     BEGIN
@@ -895,7 +921,6 @@ Function Get-ArmResource
     END{}
 
 }
-
 
 Function ConvertFrom-ArmResourceId
 {
@@ -945,7 +970,6 @@ Function ConvertFrom-ArmResourceId
     END{}
 }
 
-
 Function Get-ArmResourceInstance
 {
     [CmdletBinding()]
@@ -959,7 +983,7 @@ Function Get-ArmResourceInstance
         $AccessToken,
         [Parameter(Mandatory=$false)]
         [System.Uri]
-        $ApiEndpoint='https://management.azure.com'
+        $ApiEndpoint=$Script:DefaultArmFrontDoor
     )
 
     BEGIN
@@ -993,6 +1017,191 @@ Function Get-ArmResourceInstance
             if ($ArmResult -ne $null) {
                 Write-Output $ArmResult
             }
+        }
+    }
+    END{}
+}
+
+Function Get-ArmUsageAggregate
+{
+    [CmdletBinding(DefaultParameterSetName='explicit')]
+    param
+    (
+        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset')]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipeline=$true)]
+        [System.String[]]
+        $SubscriptionId,
+        [Parameter(Mandatory=$false,ParameterSetName='objectOffset')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [System.Object[]]
+        $Subscription,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
+        [System.DateTime]
+        $StartTime,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.DateTime]
+        $EndTime=[System.DateTime]::UtcNow,
+        [Parameter(Mandatory=$true,ParameterSetName='objectOffset')]
+        [Parameter(Mandatory=$true,ParameterSetName='explicitOffset')]
+        [System.DateTimeOffset]
+        $StartTimeOffset,
+        [Parameter(Mandatory=$false,ParameterSetName='objectOffset')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset')]
+        [System.DateTimeOffset]
+        $EndTimeOffset,
+        [Parameter(Mandatory=$false,ParameterSetName='objectOffset')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset')]                
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [ValidateSet('Daily','Hourly')]
+        [System.String]
+        $Granularity='Daily',
+        [Parameter(Mandatory=$false,ParameterSetName='objectOffset')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset')]        
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Switch]
+        $ShowDetails,
+        [Parameter(Mandatory=$false,ParameterSetName='objectOffset')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset')]                      
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
+        [System.String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='objectOffset')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset')]        
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ParameterSetName='objectOffset')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset')]        
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.String]
+        $ApiVersion=$Script:DefaultBillingApiVerion
+    )
+
+    BEGIN
+    {
+        if ($PSCmdlet.ParameterSetName -in 'object','explicit') {
+            if ($Granularity -eq "Hourly") {
+                $StartTimeOffset=New-Object System.DateTimeOffset($StartTime.Year,$StartTime.Month,$StartTime.Day,$StartTime.Hour,0,0,0)
+                $EndTimeOffset=New-Object System.DateTimeOffset($EndTime.Year,$EndTime.Month,$EndTime.Day,$StartTime.Hour,0,0,0)
+            }
+            else {
+                $StartTimeOffset=New-Object System.DateTimeOffset($StartTime.Year,$StartTime.Month,$StartTime.Day,0,0,0,0)
+                $EndTimeOffset=New-Object System.DateTimeOffset($EndTime.Year,$EndTime.Month,$EndTime.Day,0,0,0,0)
+            }
+        }
+        else {
+            if ($Granularity -eq "Hourly") {
+                $EndTimeOffset=New-Object System.DateTimeOffset($EndTime.Year,$EndTime.Month,$EndTime.Day,$StartTime.Hour,0,0,0)
+            }
+            else {
+                $EndTimeOffset=New-Object System.DateTimeOffset($EndTime.Year,$EndTime.Month,$EndTime.Day,0,0,0,0)
+            }
+        }
+        $AuthHeaders=@{'Authorization'="Bearer $AccessToken"}
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $StartTimeString=[Uri]::EscapeDataString($StartTimeOffset.ToString('o'))
+        $EndTimeString=[Uri]::EscapeDataString($EndTimeOffset.ToString('o'))
+        $ArmUriBld.Query="api-version=$ApiVersion&reportedStartTime=$($StartTimeString)&reportedEndTime=$($EndTimeString)&aggregationGranularity=$Granularity&showDetails=$($ShowDetails.IsPresent)"
+    }
+    PROCESS
+    {
+        if($PSCmdlet.ParameterSetName -eq 'object')
+        {
+            foreach ($sub in $Subscription) {
+                $SubscriptionId+=$sub.subscriptionId
+            }
+        }
+        foreach ($item in $SubscriptionId)
+        {
+            do
+            {
+                $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Commerce/UsageAggregates"
+                $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json'
+                foreach ($result in $ArmResult.value) {
+                    Write-Output $result
+                }                
+                $nextLink=$ArmResult.nextLink
+            } while ($nextLink -ne $null)
+        }
+    }
+    END{}
+}
+
+Function Get-ArmRateCard
+{
+    [CmdletBinding(DefaultParameterSetName='explicit')]
+    param
+    (
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipeline=$true)]
+        [System.String[]]
+        $SubscriptionId,
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipeline=$true)]
+        [System.Object[]]
+        $Subscription,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.String]
+        $OfferPrefix="MS-AZR-",        
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.String]
+        $OfferCode='0003P',
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [ValidateSet({$_ -in $Script:CultureCodes})]
+        [System.String]
+        $Locale='en-US',
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [ValidateSet({$_ -in $Script:Iso3166Regions})]
+        [System.String]
+        $RegionInfo='US',             
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
+        [System.String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.String]
+        $ApiVersion='2015-06-01-preview'
+    )
+
+    BEGIN
+    {
+        $AuthHeaders=@{'Authorization'="Bearer $AccessToken"}
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $OfferDurableId="$($OfferPrefix)$($OfferCode)"
+        $DesiredCulture=$Script:SpecificCultures|Where-Object{$_.Name -eq $Locale}|Select-Object -First 1
+        $DesiredRegion=New-Object System.Globalization.RegionInfo($RegionInfo)
+        $ArmUriBld.Query="api-version=$ApiVersion$filter=OfferDurableId eq '$OfferDurableId' " + 
+            "and Currency -eq '$($DesiredRegion.ISOCurrencySymbol)'" +
+            "and Locale -eq '$Locale' and RegionInfo eq '$RegionInfo'" 
+    }
+    PROCESS
+    {
+        if($PSCmdlet.ParameterSetName -eq 'object')
+        {
+            foreach ($sub in $Subscription) {
+                $SubscriptionId+=$sub.subscriptionId
+            }
+        }
+        foreach ($item in $SubscriptionId)
+        {
+            Write-Verbose "Subscription:$item OfferDurableId:$OfferDurableId Locale:$Locale Currency:$($DesiredRegion.ISOCurrencySymbol)"
+            $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Commerce/RateCard"
+            $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json'
+            Write-Output $ArmResult
         }
     }
     END{}
