@@ -2,13 +2,8 @@
     Avanade.ArmTools
 #>
 
-$Script:DefaultArmApiVersion="2015-09-01"
-$Script:DefaultResourceLockApiVersion="2015-01-01"
-$Script:DefaultFeatureApiVersion="2015-12-01"
-$Script:DefaultBillingApiVerion='2015-06-01-preview'
-$Script:DefaultArmFrontDoor=$Script:DefaultArmFrontDoor
-
-$Script:Iso3166Regions = @(
+#region Constants
+$Script:Iso3166Codes=@(
     'AF','AX','AL','DZ','AS','AD','AO','AI','AQ','AG','AR','AM','AW','AU','AT','AZ','BS','BH',
     'BD','BB','BY','BE','BZ','BJ','BM','BT','BO','BQ','BA','BW','BV','BR','IO','BN','BG','BF',
     'BI','KH','CM','CA','CV','KY','CF','TD','CL','CN','CX','CC','CO','KM','CG','CD','CK','CR',
@@ -22,11 +17,78 @@ $Script:Iso3166Regions = @(
     'RE','RO','RU','RW','BL','SH','KN','LC','MF','PM','VC','WS','SM','ST','SA','SN','RS','SC',
     'SL','SG','SX','SK','SI','SB','SO','ZA','GS','SS','ES','LK','SD','SR','SJ','SZ','SE','CH',
     'SY','TW','TJ','TZ','TH','TL','TG','TK','TO','TT','TN','TR','TM','TC','TV','UG','UA','AE',
-    'GB','US','UM','UY','UZ','VU','VE','VN','VG','VI','WF','EH','YE','ZM','ZW'
+    'GB','US','UM','UY','UZ','VU','VE','VN','VG','VI','WF','EH','YE','ZM','ZW'    
 )
-
 $Script:SpecificCultures=[System.Globalization.CultureInfo]::GetCultures([System.Globalization.CultureTypes]::AllCultures -band [System.Globalization.CultureTypes]::SpecificCultures)
 $Script:CultureCodes = ($Script:SpecificCultures|Select-Object -ExpandProperty Name)
+$Script:DefaultArmApiVersion="2015-09-01"
+$Script:DefaultResourceLockApiVersion="2015-01-01"
+$Script:DefaultFeatureApiVersion="2015-12-01"
+$Script:DefaultBillingApiVerion='2015-06-01-preview'
+$Script:DefaultArmFrontDoor='https://management.azure.com'
+
+#endregion
+
+
+function CreateDynamicValidateSetParameter
+{
+    [CmdletBinding()]
+    [OutputType([System.Management.Automation.RuntimeDefinedParameterDictionary])]
+    param
+    (
+        # Parameter Name
+        [Parameter(Mandatory=$true)]
+        [string]
+        $ParameterName,
+        [Parameter(Mandatory=$false)]
+        [string[]]
+        $ParameterSetNames= "__AllParameterSets",             
+        # String ValidateSet Array
+        [Parameter(Mandatory=$true)]
+        [System.Object[]]
+        $ParameterValues,
+        [Parameter(Mandatory=$false)]
+        [System.Type]
+        $ParameterType=[String],        
+        [Parameter(Mandatory=$false)]
+        [object]
+        $DefaultValue,
+        [Parameter(Mandatory=$false)]
+        [bool]
+        $Mandatory=$false,
+        [Parameter(Mandatory=$false)]
+        [bool]
+        $ValueFromPipeline=$false,
+        [Parameter(Mandatory=$false)]
+        [bool]
+        $ValueFromPipelineByName=$false
+    )
+
+    # Create the collection of attributes
+    $AttributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
+
+    # Create and set the parameters' attributes
+    foreach ($ParameterSetName in $ParameterSetNames) {
+        $ParameterAttribute = New-Object System.Management.Automation.ParameterAttribute
+        $ParameterAttribute.ValueFromPipeline = $ValueFromPipeline
+        $ParameterAttribute.ValueFromPipelineByPropertyName = $ValueFromPipelineByName
+        $ParameterAttribute.Mandatory = $Mandatory
+        $ParameterAttribute.ParameterSetName=$ParameterSetName
+        $AttributeCollection.Add($ParameterAttribute)
+    }
+
+    # Generate and set the ValidateSet
+    $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($ParameterValues)
+    # Add the ValidateSet to the attributes collection
+    $AttributeCollection.Add($ValidateSetAttribute)
+
+    # Create and return the dynamic parameter
+    $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, $ParameterType, $AttributeCollection)
+    if ($DefaultValue -ne $null) {
+        $RuntimeParameter.Value=$DefaultValue
+    }
+    return $RuntimeParameter
+}
 
 Function Get-ArmWebSite
 {
@@ -859,6 +921,22 @@ Function Get-ArmFeature
 
 }
 
+<#
+    .SYNOPSIS
+        Retrieves abstract resource instance(s)
+    .PARAMETER SubscriptionId
+        The azure subscription id(s)
+    .PARAMETER Subscription
+        The azure subscription(s)
+    .PARAMETER ResourceGroup
+        The resource group to scope the query
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version        
+#>
 Function Get-ArmResource
 {
     [CmdletBinding(DefaultParameterSetName='explicit')]
@@ -905,23 +983,29 @@ Function Get-ArmResource
         foreach ($item in $SubscriptionId) 
         {
             $ArmUriBld.Path="subscriptions/$item/resources"
-            if([String]::IsNullOrEmpty($ResourceGroup) -eq $false)
+            do
             {
-                $ArmUriBld.Path="subscriptions/$item/resourceGroups/$ResourceGroup/resources"
-            }
-            try {
                 $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders -ErrorAction Continue
                 Write-Output $ArmResult.value
+                if([String]::IsNullOrEmpty($nextLink) -eq $false)
+                {
+                    Write-Verbose "More results @ $nextLink"
+                    $ArmUriBld=New-Object System.UriBuilder($nextLink)
+                }
             }
-            catch [System.Exception] {
-                Write-Warning $_
-            }          
+            while ($nextLink -ne $null)          
         }        
     }
     END{}
 
 }
 
+<#
+    .SYNOPSIS
+        Resolves resource segments from an ARM resource id
+    .PARAMETER Id
+        The resource id(s) to resolve
+#>
 Function ConvertFrom-ArmResourceId
 {
     [CmdletBinding()]
@@ -1120,29 +1204,57 @@ Function Get-ArmUsageAggregate
         }
         foreach ($item in $SubscriptionId)
         {
+            $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Commerce/UsageAggregates"
             do
             {
-                $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Commerce/UsageAggregates"
                 $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json'
                 foreach ($result in $ArmResult.value) {
                     Write-Output $result
                 }                
                 $nextLink=$ArmResult.nextLink
+                if([String]::IsNullOrEmpty($nextLink) -eq $false)
+                {
+                    Write-Verbose "More results @ $nextLink"
+                    $ArmUriBld=New-Object System.UriBuilder($nextLink)
+                }
             } while ($nextLink -ne $null)
         }
     }
     END{}
 }
 
+<#
+    .SYNOPSIS
+        Retrieves the Rate Card for the given locale
+    .PARAMETER SubscriptionId
+        The azure subscription id(s)
+    .PARAMETER Subscription
+        The azure subscription(s)
+    .PARAMETER OfferPrefix
+        The offer prefix (e.g. MS-AZR-)
+    .PARAMETER OfferCode (e.g. 0003P)
+        The offer code
+    .PARAMETER Locale (e.g. en-US)
+        The locale for the desired results
+    .PARAMETER Locale (e.g. US)
+        The ISO-3166 two letter region code            
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version 
+#>
 Function Get-ArmRateCard
 {
+    [OutputType([System.Object])]
     [CmdletBinding(DefaultParameterSetName='explicit')]
     param
     (
-        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipeline=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
         [System.Object[]]
         $Subscription,
         [Parameter(Mandatory=$false,ParameterSetName='object')]
@@ -1153,16 +1265,6 @@ Function Get-ArmRateCard
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [System.String]
         $OfferCode='0003P',
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
-        [ValidateSet({$_ -in $Script:CultureCodes})]
-        [System.String]
-        $Locale='en-US',
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
-        [ValidateSet({$_ -in $Script:Iso3166Regions})]
-        [System.String]
-        $RegionInfo='US',             
         [Parameter(Mandatory=$true,ParameterSetName='object')]
         [Parameter(Mandatory=$true,ParameterSetName='explicit')]
         [System.String]
@@ -1177,16 +1279,22 @@ Function Get-ArmRateCard
         $ApiVersion='2015-06-01-preview'
     )
 
+    DynamicParam
+    {
+        $RuntimeParameterDictionary = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
+        $RegionInfoParam=CreateDynamicValidateSetParameter -ParameterName 'RegionInfo' -ParameterSetNames "explicit","object" `
+             -ParameterValues $Script:Iso3166Codes -ParameterType "String" -Mandatory $true -ValueFromPipelineByName $true
+        $LocaleParam=CreateDynamicValidateSetParameter -ParameterName 'Locale' -ParameterSetNames "explicit","object" `
+            -ParameterValues $Script:CultureCodes -ParameterType "String" -Mandatory $true -ValueFromPipelineByName $true
+        $RuntimeParameterDictionary.Add('RegionInfo',$RegionInfoParam)
+        $RuntimeParameterDictionary.Add('Locale',$LocaleParam)
+        return $RuntimeParameterDictionary
+    }
+
     BEGIN
     {
         $AuthHeaders=@{'Authorization'="Bearer $AccessToken"}
         $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
-        $OfferDurableId="$($OfferPrefix)$($OfferCode)"
-        $DesiredCulture=$Script:SpecificCultures|Where-Object{$_.Name -eq $Locale}|Select-Object -First 1
-        $DesiredRegion=New-Object System.Globalization.RegionInfo($RegionInfo)
-        $ArmUriBld.Query="api-version=$ApiVersion$filter=OfferDurableId eq '$OfferDurableId' " + 
-            "and Currency -eq '$($DesiredRegion.ISOCurrencySymbol)'" +
-            "and Locale -eq '$Locale' and RegionInfo eq '$RegionInfo'" 
     }
     PROCESS
     {
@@ -1198,10 +1306,21 @@ Function Get-ArmRateCard
         }
         foreach ($item in $SubscriptionId)
         {
+            $Locale=$PSBoundParameters.Locale
+            $RegionInfo=$PSBoundParameters.RegionInfo
+            $OfferDurableId="$($OfferPrefix)$($OfferCode)"
+            $DesiredCulture=$Script:SpecificCultures|Where-Object{$_.Name -eq $Locale}|Select-Object -First 1
+            $DesiredRegion=New-Object System.Globalization.RegionInfo($RegionInfo)
+
+            $ArmUriBld.Query="api-version=$ApiVersion&`$filter=OfferDurableId eq '$OfferDurableId' " + 
+                "and Currency eq '$($DesiredRegion.ISOCurrencySymbol)'" +
+                "and Locale eq '$Locale' and RegionInfo eq '$RegionInfo'"   
+
+
             Write-Verbose "Subscription:$item OfferDurableId:$OfferDurableId Locale:$Locale Currency:$($DesiredRegion.ISOCurrencySymbol)"
-            $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Commerce/RateCard"
-            $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json'
-            Write-Output $ArmResult
+            $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Commerce/RateCard"          
+            $Result=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json'
+            Write-Output $Result
         }
     }
     END{}
