@@ -148,124 +148,41 @@ Function ConvertFrom-ArmResourceId
 
 Function Get-ArmWebSite
 {
-    [CmdletBinding(DefaultParameterSetName='all')]
+    [CmdletBinding(DefaultParameterSetName='object')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='named')]
-        [Parameter(Mandatory=$true,ParameterSetName='all')]
-        [System.String]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='idWithName',ValueFromPipeline=$true)]
+        [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$true,ParameterSetName='namedObject')]
-        [Parameter(Mandatory=$true,ParameterSetName='allObject')]
-        [System.Object]
-        $Subscription,
-        [Parameter(Mandatory=$true,ParameterSetName='namedObject')]    
-        [Parameter(Mandatory=$true,ParameterSetName='named')]
-        [System.String]
-        $WebsiteName,
-        [Parameter(Mandatory=$true,ParameterSetName='namedObject')]
-        [Parameter(Mandatory=$true,ParameterSetName='named')]
-        [System.String]
-        $ResourceGroupName,
-        [Parameter(Mandatory=$true,ParameterSetName='namedObject')]
-        [Parameter(Mandatory=$true,ParameterSetName='named')]
-        [Parameter(Mandatory=$true,ParameterSetName='all')]
-        [Parameter(Mandatory=$true,ParameterSetName='allObject')]
-        [System.String]
-        $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='namedObject')]
-        [Parameter(Mandatory=$false,ParameterSetName='named')]
-        [Parameter(Mandatory=$false,ParameterSetName='all')]
-        [Parameter(Mandatory=$false,ParameterSetName='allObject')]
-        [System.Uri]
-        $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='namedObject')]
-        [Parameter(Mandatory=$false,ParameterSetName='named')]
-        [Parameter(Mandatory=$false,ParameterSetName='all')]
-        [Parameter(Mandatory=$false,ParameterSetName='allObject')]
-        [System.String]
-        $ApiVersion='2016-08-01'
-    )
-
-    if($PSCmdlet.ParameterSetName -in "namedObject","allObject") {
-        $SubscriptionId=$Subscription.subscriptionId
-    }
-
-    $Headers=@{
-        'Authorization'="Bearer $AccessToken";
-        'Accept'='application/json';
-    }
-    $UriBuilder=New-Object System.UriBuilder($ApiEndpoint)
-    $UriBuilder.Path="/subscriptions/$SubscriptionId/providers/Microsoft.Web/sites"
-    if($PSCmdlet.ParameterSetName -eq 'named')
-    {
-        $UriBuilder.Path="/subscriptions/$SubscriptionId/resourcegroups/$ResourceGroupName/providers/Microsoft.Web/sites/$WebsiteName"
-    }
-    $UriBuilder.Query="api-version=$ApiVersion"
-    $Result=Invoke-RestMethod -Uri $UriBuilder.Uri -Method Get -ContentType 'application/json' -Headers $Headers
-    if($PSCmdlet.ParameterSetName -eq 'named')
-    {
-        Write-Output -InputObject $Result
-    }
-    else
-    {
-        foreach ($webresult in $Result.value)
-        {
-            Write-Output $webresult
-        }
-        $AllDone=[String]::IsNullOrEmpty($Result.nextLink)
-        if($AllDone -eq $false)
-        {
-            do
-            {
-                $AllDone=[String]::IsNullOrEmpty($Result.nextLink)
-                $Result=Invoke-RestMethod -Uri $Result.nextLink -Method Get -ContentType 'application/json' -Headers $Headers
-                foreach ($webresult in $Result.value)
-                {
-                    Write-Output $webresult
-                }
-            }
-            while ($AllDone -eq $false)
-        }
-
-    }
-}
-
-Function Get-ArmWebSitePublishingCredential
-{
-    [CmdletBinding(DefaultParameterSetName='explicit')]
-    param
-    (
-        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
-        [System.String]
-        $SubscriptionId,
-        [Parameter(Mandatory=$true,ParameterSetName='explicitObject')]
-        [System.Object]
-        $Subscription,                
-        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
-        [Parameter(Mandatory=$true,ParameterSetName='explicitObject')]
-        [System.String]
-        $ResourceGroupName,        
-        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
-        [Parameter(Mandatory=$true,ParameterSetName='explicitObject')]
-        [System.String]
-        $WebsiteName,
+        [Parameter(Mandatory=$true,ParameterSetName='objectWithName',ValueFromPipeline=$true)]
         [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
         [System.Object[]]
-        $Website,
+        $Subscription,
+        [Parameter(Mandatory=$true,ParameterSetName='idWithName')]
+        [Parameter(Mandatory=$true,ParameterSetName='objectWithName')]
+        [System.String]
+        $WebsiteName,
+        [Parameter(Mandatory=$true,ParameterSetName='idWithName')]
+        [Parameter(Mandatory=$true,ParameterSetName='objectWithName')]
+        [System.String]
+        $ResourceGroupName,
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
         [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
-        [Parameter(Mandatory=$true,ParameterSetName='explicitObject')]
+        [Parameter(Mandatory=$true,ParameterSetName='idWithName')]
+        [Parameter(Mandatory=$true,ParameterSetName='objectWithName')]
         [System.String]
         $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
         [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicitObject')]
+        [Parameter(Mandatory=$false,ParameterSetName='idWithName')]
+        [Parameter(Mandatory=$false,ParameterSetName='objectWithName')]        
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
         [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicitObject')]
+        [Parameter(Mandatory=$false,ParameterSetName='idWithName')]
+        [Parameter(Mandatory=$false,ParameterSetName='objectWithName')]        
         [System.String]
         $ApiVersion='2016-08-01'
     )
@@ -276,14 +193,99 @@ Function Get-ArmWebSitePublishingCredential
             'Authorization'="Bearer $AccessToken";
             'Accept'='application/json';
         }
-
-        if($PSCmdlet.ParameterSetName -in 'explicit','explicitObject')
-        {
-            if ($PSCmdlet.ParameterSetName -eq "explicitObject") {
-                $Subscription.subscriptionId
-            }
-            $Website+=Get-ArmWebSite -SubscriptionId $SubscriptionId -ApiEndpoint $ApiEndpoint -ApiVersion $ApiVersion -AccessToken $AccessToken|? name -In $WebsiteName
+        $UriBuilder=New-Object System.UriBuilder($ApiEndpoint)
+        $UriBuilder.Query="api-version=$ApiVersion"
+    }
+    PROCESS
+    {
+        if ($PSCmdlet.ParameterSetName -in 'object','objectWithName') {
+            $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
         }
+        foreach ($id in $SubscriptionId) 
+        {
+            if ($PSCmdlet.ParameterSetName -in 'objectWithName','idWithName') {
+                $UriBuilder.Path="/subscriptions/$Id/resourcegroups/$ResourceGroupName/providers/Microsoft.Web/sites/$WebsiteName"
+                $ArmResult=Invoke-RestMethod -Uri $UriBuilder.Uri -Headers $Headers -ContentType 'application/json'
+                Write-Output $ArmResult
+            }
+            else {
+                $UriBuilder.Path="/subscriptions/$Id/providers/Microsoft.Web/sites"
+                do 
+                {
+                    try 
+                    {
+                        $ArmResult=Invoke-RestMethod -Uri $UriBuilder.Uri -Headers $Headers -ContentType 'application/json'
+                        Write-Output $ArmResult.value
+                        $nextLink=$ArmResult.nextLink
+                        $UriBuilder=New-Object System.UriBuilder($nextLink)                
+                    }
+                    catch [System.Exception] {
+                        Write-Warning $_
+                        $nextLink=$null
+                    }
+                } 
+                while ($nextLink -ne $null)
+            }
+        }
+    }
+    END
+    {
+
+    }
+}
+
+Function Get-ArmWebSitePublishingCredential
+{
+    [CmdletBinding(DefaultParameterSetName='id')]
+    param
+    (
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [System.String]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [System.Object]
+        $Subscription,                
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [System.String]
+        $ResourceGroupName,        
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [System.String]
+        $WebsiteName,
+        [Parameter(Mandatory=$true,ParameterSetName='bySiteObject',ValueFromPipeline=$true)]
+        [System.Object[]]
+        $Website,
+        [Parameter(Mandatory=$true,ParameterSetName='bySiteObject')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [System.String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='bySiteObject')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ParameterSetName='bySiteObject')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [System.String]
+        $ApiVersion='2016-08-01'
+    )
+
+    BEGIN
+    {
+        $Headers=@{
+            'Authorization'="Bearer $AccessToken";
+            'Accept'='application/json';
+        }
+        if ($PSCmdlet.ParameterSetName -eq "object") {
+            $SubscriptionId=$Subscription.subscriptionId
+            $ArmSite=Get-ArmWebSite -SubscriptionId $SubscriptionId -WebsiteName $WebsiteName `
+                -ResourceGroupName $ResourceGroupName -AccessToken $AccessToken `
+                -ApiEndpoint $ApiEndpoint -ApiVersion $ApiVersion
+            $Website+=$ArmSite
+        }          
     }
     PROCESS
     {
