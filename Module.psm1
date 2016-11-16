@@ -1261,6 +1261,12 @@ Function Get-ArmUsageAggregate
         [Parameter(Mandatory=$false,ParameterSetName='explicitOffset')]                
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.Int32]
+        $LimitResultPages,        
+        [Parameter(Mandatory=$false,ParameterSetName='objectOffset')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset')]                
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [ValidateSet('Daily','Hourly')]
         [System.String]
         $Granularity='Daily',
@@ -1327,16 +1333,27 @@ Function Get-ArmUsageAggregate
         }
         foreach ($item in $SubscriptionId)
         {
+            $ResultPages=0
             $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Commerce/UsageAggregates"
             do
             {
+                $ResultPages++
                 try 
                 {
-                    $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json'
-                    foreach ($result in $ArmResult.value) {
-                        Write-Output $result
-                    }                
-                    $nextLink=$ArmResult.nextLink
+                    $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json' -ErrorAction Stop
+                    Write-Output $ArmResult.value
+                    if ($LimitResultPages -gt 0) {
+                        if ($ResultPages -lt $LimitResultPages) {
+                            $nextLink=$ArmResult.nextLink
+                        }
+                        else {
+                            $nextLink=$null
+                            Write-Verbose "Stopped iterating at $ResultPages pages. More data available?:$([string]::IsNullOrEmpty($nextLink))"
+                        }
+                    }            
+                    else {
+                        $nextLink=$ArmResult.nextLink
+                    }
                     if([String]::IsNullOrEmpty($nextLink) -eq $false)
                     {
                         Write-Verbose "More results @ $nextLink"
