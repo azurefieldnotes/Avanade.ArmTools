@@ -145,7 +145,24 @@ Function ConvertFrom-ArmResourceId
 }
 
 #endregion
-
+<#
+    .SYNOPSIS
+        Retrieves azure websites from the given subscription(s)
+    .PARAMETER Subscription
+        The azure subscription(s)    
+    .PARAMETER SubscriptionId
+        The azure subscription id(s)
+    .PARAMETER ResourceGroupName
+        The website resource group
+    .PARAMETER WebsiteName
+        The website name        
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersions
+        The ARM api version        
+#>
 Function Get-ArmWebSite
 {
     [CmdletBinding(DefaultParameterSetName='object')]
@@ -234,6 +251,26 @@ Function Get-ArmWebSite
     }
 }
 
+<#
+    .SYNOPSIS
+        Retrieves publishing credential(s) for given website(s)
+    .PARAMETER Subscription
+        The azure subscription(s)    
+    .PARAMETER SubscriptionId
+        The azure subscription id(s)
+    .PARAMETER ResourceGroupName
+        The website resource group
+    .PARAMETER WebsiteName
+        The website name
+    .PARAMETER Website
+        The website instance
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersions
+        The ARM api version        
+#>
 Function Get-ArmWebSitePublishingCredential
 {
     [CmdletBinding(DefaultParameterSetName='id')]
