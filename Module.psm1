@@ -23,6 +23,7 @@ $Script:DefaultArmApiVersion="2016-09-01"
 $Script:DefaultResourceLockApiVersion="2015-01-01"
 $Script:DefaultFeatureApiVersion="2015-12-01"
 $Script:DefaultBillingApiVerion='2015-06-01-preview'
+$Script:DefaultWebsiteApiVersion='2016-08-01'
 $Script:DefaultArmFrontDoor='https://management.azure.com'
 #endregion
 
@@ -160,7 +161,7 @@ Function ConvertFrom-ArmResourceId
         The OAuth access token
     .PARAMETER ApiEndpoint
         The ARM api endpoint
-    .PARAMETER ApiVersions
+    .PARAMETER ApiVersion
         The ARM api version        
 #>
 Function Get-ArmWebSite
@@ -201,7 +202,7 @@ Function Get-ArmWebSite
         [Parameter(Mandatory=$false,ParameterSetName='idWithName')]
         [Parameter(Mandatory=$false,ParameterSetName='objectWithName')]        
         [System.String]
-        $ApiVersion='2016-08-01'
+        $ApiVersion=$Script:DefaultWebsiteApiVersion
     )
 
     BEGIN
@@ -268,7 +269,7 @@ Function Get-ArmWebSite
         The OAuth access token
     .PARAMETER ApiEndpoint
         The ARM api endpoint
-    .PARAMETER ApiVersions
+    .PARAMETER ApiVersion
         The ARM api version        
 #>
 Function Get-ArmWebSitePublishingCredential
@@ -307,7 +308,7 @@ Function Get-ArmWebSitePublishingCredential
         [Parameter(Mandatory=$false,ParameterSetName='id')]
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [System.String]
-        $ApiVersion='2016-08-01'
+        $ApiVersion=$Script:DefaultWebsiteApiVersion
     )
 
     BEGIN
@@ -343,6 +344,70 @@ Function Get-ArmWebSitePublishingCredential
 
 <#
     .SYNOPSIS
+        Retrieves the list of tenants associated with the authorization token
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version        
+#>
+Function Get-ArmTenant
+{
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [System.String[]]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='id')]        
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ParameterSetName='id')]        
+        [System.String]
+        $ApiVersion=$Script:DefaultArmApiVersion        
+    )
+    BEGIN
+    {
+        $Headers=@{
+            'Authorization'="Bearer $AccessToken";
+            'Accept'='application/json';
+        }
+    }
+    PROCESS
+    {
+        foreach ($token in $AccessToken) {
+            $ArmUriBld=New-Object System.UriBuilder($Script:DefaultArmFrontDoor)
+            $ArmUriBld.Path='tenants'
+            $ArmUriBld.Query="api-version=$ApiVersion"
+            do
+            {
+                try 
+                {
+                    $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $Headers -ErrorAction Stop
+                    Write-Output $ArmResult.value
+                    if([String]::IsNullOrEmpty($nextLink) -eq $false)
+                    {
+                        Write-Verbose "More results @ $nextLink"
+                        $ArmUriBld=New-Object System.UriBuilder($nextLink)
+                    }                    
+                }
+                catch [System.Exception] {
+                    $nextLink=$null
+                    Write-Warning "Tenants - $_"
+                }
+            }
+            while ($nextLink -ne $null)
+        }
+    }
+    END
+    {
+
+    }
+}
+
+<#
+    .SYNOPSIS
         Retrieves Azure subscriptions
     .PARAMETER SubscriptionId
         The azure subscription id
@@ -350,7 +415,7 @@ Function Get-ArmWebSitePublishingCredential
         The OAuth access token
     .PARAMETER ApiEndpoint
         The ARM api endpoint
-    .PARAMETER ApiVersions
+    .PARAMETER ApiVersion
         The ARM api version
 #>
 Function Get-ArmSubscription
@@ -401,7 +466,7 @@ Function Get-ArmSubscription
         The OAuth access token
     .PARAMETER ApiEndpoint
         The ARM api endpoint
-    .PARAMETER ApiVersions
+    .PARAMETER ApiVersion
         The ARM api version
 #>
 Function Get-ArmProvider
@@ -503,7 +568,7 @@ Function Get-ArmProvider
         The OAuth access token
     .PARAMETER ApiEndpoint
         The ARM api endpoint
-    .PARAMETER ApiVersions
+    .PARAMETER ApiVersion
         The ARM api version
 #>
 Function Get-ArmResourceType
@@ -630,7 +695,7 @@ Function Get-ArmResourceType
         The OAuth access token
     .PARAMETER ApiEndpoint
         The ARM api endpoint
-    .PARAMETER ApiVersions
+    .PARAMETER ApiVersion
         The ARM api version
 #>
 Function Get-ArmResourceTypeApiVersion
@@ -690,7 +755,7 @@ Function Get-ArmResourceTypeApiVersion
         The OAuth access token
     .PARAMETER ApiEndpoint
         The ARM api endpoint
-    .PARAMETER ApiVersions
+    .PARAMETER ApiVersion
         The ARM api version
 #>
 Function Get-ArmResourceGroup
@@ -775,7 +840,7 @@ Function Get-ArmResourceGroup
         The OAuth access token
     .PARAMETER ApiEndpoint
         The ARM api endpoint
-    .PARAMETER ApiVersions
+    .PARAMETER ApiVersion
         The ARM api version
 
 #>
@@ -950,7 +1015,7 @@ Function Get-ArmResourceLock
             {
                 try 
                 {
-                    $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders -ErrorAction Continue
+                    $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders -ErrorAction Stop
                     Write-Output $ArmResult.value
                     if([String]::IsNullOrEmpty($nextLink) -eq $false)
                     {
@@ -987,7 +1052,7 @@ Function Get-ArmResourceLock
         The OAuth access token
     .PARAMETER ApiEndpoint
         The ARM api endpoint
-    .PARAMETER ApiVersions
+    .PARAMETER ApiVersion
         The ARM api version
 #>
 Function Get-ArmFeature
