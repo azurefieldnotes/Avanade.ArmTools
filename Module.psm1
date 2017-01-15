@@ -24,9 +24,10 @@ $Script:DefaultResourceLockApiVersion="2015-01-01"
 $Script:DefaultFeatureApiVersion="2015-12-01"
 $Script:DefaultBillingApiVerion='2015-06-01-preview'
 $Script:DefaultWebsiteApiVersion='2016-08-01'
+$Script:DefaultMonitorApiVersion='2016-03-01'
+$Script:ClassicMonitorApiVersion='2014-06-01'
 $Script:DefaultArmFrontDoor='https://management.azure.com'
 #endregion
-
 
 #region Helper Methods
 
@@ -727,19 +728,26 @@ Function Get-ArmResourceTypeApiVersion
         $ApiVersion=$Script:DefaultArmApiVersion
     )
 
-    switch ($PSCmdlet.ParameterSetName) {
-        "explicit" {
+    BEGIN
+    {
+
+    }
+    PROCESS
+    {
+        if ($PSCmdlet.ParameterSetName -eq "object") {
+            $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId    
+        }
+        foreach ($item in $SubscriptionId) {
             $ArmResourceType=Get-ArmResourceType -SubscriptionId $SubscriptionId `
                 -ResourceType $ResourceType -AccessToken $AccessToken `
                 -ApiEndpoint $ApiEndpoint -ApiVersion $ApiVersion
-        }
-        "object" {
-            $ArmResourceType=Get-ArmResourceType -Subscription $Subscription `
-                -ResourceType $ResourceType -AccessToken $AccessToken `
-                -ApiEndpoint $ApiEndpoint -ApiVersion $ApiVersion
+                Write-Output $ArmResourceType.apiVersions
         }
     }
-    return $ArmResourceType.apiVersions
+    END
+    {
+
+    }
 }
 
 <#
@@ -1189,14 +1197,13 @@ Function Get-ArmResource
     {
         $AuthHeaders=@{'Authorization'="Bearer $AccessToken"}
         $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
-        $QueryStr+="&api-version=$ApiVersion"
+        $QueryStr="api-version=$ApiVersion"
         if ($Top -gt 0) {
             $QueryStr+="&`$top=$Top"
         }
         if ([String]::IsNullOrEmpty($Filter) -eq $false) {
             $QueryStr+="&`$filter=$Filter"
         }
-        $QueryStr+="&api-version=$ApiVersion"
         $ArmUriBld.Query=$QueryStr
     }
     PROCESS
@@ -1209,7 +1216,10 @@ Function Get-ArmResource
         }
         foreach ($item in $SubscriptionId) 
         {
-            $ArmUriBld.Path="subscriptions/$item/resources"
+            #Maybe they sent subscription.id not subscription.subscriptionid
+            $SubId=$item.Split('/')|Select-Object -Last 1
+
+            $ArmUriBld.Path="subscriptions/$SubId/resources"
             if ([String]::IsNullOrEmpty($ResourceGroup) -eq $false) {
                 $ArmUriBld.Path+="/resourceGroups/$ResourceGroup"
             }
@@ -1255,20 +1265,24 @@ Function Get-ArmResource
 #>
 Function Get-ArmResourceInstance
 {
-    [CmdletBinding()]
+    [CmdletBinding(DefaultParameterSetName='id')]
     param
     (
-        [Parameter(Mandatory=$true,ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ValueFromPipeline=$true,ParameterSetName='id')]
         [String[]]
         $Id,
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$true,ValueFromPipeline=$true,ParameterSetName='object')]
+        [PSObject[]]
+        $Resource,
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
         [System.String]
         $AccessToken,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor
     )
-
     BEGIN
     {
         $AuthHeaders=@{'Authorization'="Bearer $AccessToken"}
@@ -1276,6 +1290,10 @@ Function Get-ArmResourceInstance
     }
     PROCESS
     {
+        if($PSCmdlet.ParameterSetName -eq 'object')
+        {
+            $Id=$Resource|Select-Object -ExpandProperty id
+        }
         foreach ($ResourceId in $Id) {
             $ArmResult=$null
             $ResourceData=$ResourceId|ConvertFrom-ArmResourceId
@@ -1293,7 +1311,7 @@ Function Get-ArmResourceInstance
                     break
                 }
                 catch [System.Exception] {
-                    Write-Warning "$ResourceId - $_"
+                    Write-Warning "$ResourceId using api version $ApiVersion - $_"
                 }
             }
             if ($ArmResult -ne $null) {
@@ -1524,7 +1542,7 @@ Function Get-ArmRateCard
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [System.String]
-        $ApiVersion='2015-06-01-preview'
+        $ApiVersion=$Script:DefaultBillingApiVerion
     )
 
     DynamicParam
@@ -1592,4 +1610,213 @@ Function Get-ArmRateCard
         }
     }
     END{}
+}
+
+Function Get-ArmResourceMetricDefinition
+{
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory=$true,ValueFromPipeline=$true)]
+        [String[]]
+        $ResourceId,        
+        [Parameter(Mandatory=$true)]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false)]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false)]
+        [System.String]
+        $ApiVersion=$Script:DefaultMonitorApiVersion,
+        [Parameter(Mandatory=$false)]
+        [System.String]
+        $ClassicApiVersion=$Script:ClassicMonitorApiVersion         
+    )
+
+    BEGIN
+    {
+        $AuthHeaders=@{'Authorization'="Bearer $AccessToken";Accept='application/json'}
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+    }
+    PROCESS
+    {
+        foreach ($item in $ResourceId) 
+        {
+            $ArmResource=$item|ConvertFrom-ArmResourceId
+            if($ArmResource.NameSpace -eq "Microsoft.ClassicCompute/virtualMachines")
+            {
+                $ClassicApiVersion='2014-04-01'
+            }           
+            if ($ArmResource.NameSpace -in "Microsoft.ClassicCompute/virtualMachines",'Microsoft.classicNetwork/virtualNetworks') {
+                $ArmUriBld.Path="subscriptions/$($ArmResource.SubscriptionId)/resourceGroups/$($ArmResource.ResourceGroup)" + `
+                    "/providers/$($ArmResource.NameSpace)/$($ArmResource.ResourceType)/$($ArmResource.Name)/metricDefinitions"
+                $ArmUriBld.Query="api-version=$ClassicApiVersion"
+            }
+            else {
+                $ArmUriBld.Path="$item/providers/microsoft.insights/metricdefinitions"
+                $ArmUriBld.Query="api-version=$ApiVersion"
+            }
+
+            try 
+            {
+                Write-Verbose "Retrieving Metric Definitions for $item"
+                $RequestResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json' -ErrorAction Stop
+                #HACK for malformed JSON
+                if ($RequestResult.GetType().FullName -eq 'System.String') {
+                    $RequestResult=$RequestResult.Replace("ResourceUri","resourceUri").Replace("ResourceId","resourceId")
+                    $Result=$RequestResult|ConvertFrom-Json
+                    Write-Output $Result                    
+                }
+                else {
+                    Write-Output $RequestResult
+                }
+            }
+            catch [System.Exception]
+            { 
+                Write-Warning "Resource $item - $_"
+            }
+
+        }
+    }
+    END
+    {
+
+    }
+
+}
+
+Function Get-ArmResourceMetric
+{
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory=$true,ValueFromPipeline=$true)]
+        [String[]]
+        $ResourceId,
+        [Parameter(Mandatory=$false)]
+        [String]
+        $Filter,     
+        [Parameter(Mandatory=$true)]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false)]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false)]
+        [System.String]
+        $ApiVersion='2016-09-01',
+        [Parameter(Mandatory=$false)]
+        [System.String]
+        $ClassicApiVersion='2016-06-01'
+    )
+
+BEGIN
+    {
+        $AuthHeaders=@{'Authorization'="Bearer $AccessToken";Accept='application/json'}
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+    }
+    PROCESS
+    {
+        foreach ($item in $ResourceId) 
+        {
+            $ArmResource=$item|ConvertFrom-ArmResourceId
+            if ($ArmResource.NameSpace -like "*.Classic*") {
+                $ArmUriBld.Path="subscriptions/$($ArmResource.SubscriptionId)/resourceGroups/$($ArmResource.ResourceGroup)" + `
+                    "/providers/$($ArmResource.NameSpace)/$($ArmResource.ResourceType)/$($ArmResource.Name)/metrics"
+                if([String]::IsNullOrEmpty($Filter))
+                {                  
+                    $UtcNow=[DateTime]::UtcNow
+                    $End=New-Object System.DateTime($UtcNow.Year,$UtcNow.Month,$UtcNow.Day,$UtcNow.Hour,0,0)                           
+                    $StartTime=(New-Object System.DateTimeOffset($End.AddHours(-1))).ToString('o')
+                    $EndTime=(New-Object System.DateTimeOffset($End)).ToString('o')
+                    $Filter="startTime eq $($StartTime) and endTime eq $($EndTime) and timeGrain eq duration'PT1H'"
+                    $ArmUriBld.Query="api-version=$ClassicApiVersion&`$filter=$Filter"
+                }
+            }
+            else 
+            {
+                $ArmUriBld.Path="$item/providers/microsoft.insights/metrics"
+                if([String]::IsNullOrEmpty($Filter))
+                {
+                    $ArmUriBld.Query="api-version=$ClassicApiVersion"
+                }
+                else
+                {
+                    $ArmUriBld.Query="api-version=$ClassicApiVersion&`$filter=$Filter"
+                }
+            }
+            try 
+            {
+                Write-Verbose "Retrieving Metrics Definitions for $item"
+                $RequestResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json' -ErrorAction Continue
+                #HACK for malformed JSON
+                if ($RequestResult.GetType().FullName -eq 'System.String') {
+                    $RequestResult=$RequestResult.Replace("ResourceUri","resourceUri").Replace("ResourceId","resourceId")
+                    $Result=$RequestResult|ConvertFrom-Json
+                    Write-Output $Result                    
+                }
+                else {
+                    Write-Output $RequestResult
+                }
+            }
+            catch [System.Exception]
+            { 
+                Write-Warning "Resource $item - $_"
+            }   
+        }
+    }
+    END
+    {
+
+    }
+}
+
+Function Get-ArmDiagnosticSetting
+{
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory=$true,ValueFromPipeline=$true)]
+        [String[]]
+        $ResourceId,        
+        [Parameter(Mandatory=$true)]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false)]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false)]
+        [System.String]
+        $ApiVersion="2015-07-01"   
+    )
+
+    BEGIN
+    {
+        $AuthHeaders=@{'Authorization'="Bearer $AccessToken";Accept='application/json'}
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+    }
+    PROCESS
+    {
+        foreach ($item in $ResourceId) 
+        {
+            $ArmUriBld.Path="$item/providers/microsoft.insights/diagnosticSettings/service"
+            $ArmUriBld.Query="api-version=$ApiVersion"
+            try 
+            {
+                Write-Verbose "Retrieving Diagnostic Settings for $item"
+                $RequestResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json' -ErrorAction Continue
+                Write-Output $RequestResult
+            }
+            catch [System.Exception]
+            { 
+                Write-Warning "Resource $item - $_"
+            }   
+        }
+    }
+    END
+    {
+
+    }
+
 }
