@@ -1198,11 +1198,11 @@ Function Get-ArmResource
         $AuthHeaders=@{'Authorization'="Bearer $AccessToken"}
         $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
         $QueryStr="api-version=$ApiVersion"
-        if ($Top -gt 0) {
-            $QueryStr+="&`$top=$Top"
-        }
         if ([String]::IsNullOrEmpty($Filter) -eq $false) {
             $QueryStr+="&`$filter=$Filter"
+        }
+        if ($Top -gt 0) {
+            $QueryStr+="&`$top=$Top"
         }
         $ArmUriBld.Query=$QueryStr
     }
@@ -1229,8 +1229,9 @@ Function Get-ArmResource
                 {
                     $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders -ErrorAction Continue
                     Write-Output $ArmResult.value
-                    if([String]::IsNullOrEmpty($nextLink) -eq $false)
+                    if([String]::IsNullOrEmpty($ArmResult.nextLink) -eq $false -and ($Top -eq 0))
                     {
+                        $nextLink=$ArmResult.nextLink
                         Write-Verbose "More results @ $nextLink"
                         $ArmUriBld=New-Object System.UriBuilder($nextLink)
                     }                    
@@ -1683,7 +1684,6 @@ Function Get-ArmResourceMetricDefinition
     {
 
     }
-
 }
 
 Function Get-ArmResourceMetric
@@ -1711,7 +1711,7 @@ Function Get-ArmResourceMetric
         $ClassicApiVersion='2016-06-01'
     )
 
-BEGIN
+    BEGIN
     {
         $AuthHeaders=@{'Authorization'="Bearer $AccessToken";Accept='application/json'}
         $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
@@ -1748,7 +1748,7 @@ BEGIN
             }
             try 
             {
-                Write-Verbose "Retrieving Metrics Definitions for $item"
+                Write-Verbose "Retrieving Metrics for $item"
                 $RequestResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json' -ErrorAction Continue
                 #HACK for malformed JSON
                 if ($RequestResult.GetType().FullName -eq 'System.String') {
@@ -1819,4 +1819,91 @@ Function Get-ArmDiagnosticSetting
 
     }
 
+}
+
+Function Get-ArmEventLog
+{
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory=$true)]
+        [System.String[]]
+        $SubscriptionId,
+        [Parameter(Mandatory=$false)]
+        [Switch]
+        $DigestEvents,
+        [Parameter(Mandatory=$false)]
+        [String]
+        $Filter,
+        [Parameter(Mandatory=$false)]        
+        [System.Int32]
+        $Top,           
+        [Parameter(Mandatory=$true)]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false)]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false)]
+        [System.String]
+        $ApiVersion='2016-09-01-preview'
+    )
+
+    BEGIN
+    {
+        $AuthHeaders=@{'Authorization'="Bearer $AccessToken";Accept='application/json'}
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        if ([String]::IsNullOrEmpty($Filter)) {
+            $UtcNow=[DateTime]::UtcNow
+            $End=New-Object System.DateTime($UtcNow.Year,$UtcNow.Month,$UtcNow.Day,$UtcNow.Hour,0,0)                           
+            $StartTime=(New-Object System.DateTimeOffset($End.AddHours(-12))).ToString('o')
+            $EndTime=(New-Object System.DateTimeOffset($End)).ToString('o')                  
+            #Default filter
+            $Filter="eventTimestamp ge '$StartTime' and eventTimestamp le '$EndTime'"
+        }
+        if ($DigestEvents.IsPresent) {
+            $ApiVersion="2014-04-01"
+        }
+        $QueryStr="api-version=$ApiVersion&`$filter=$Filter"
+        if ($Top -gt 0) {
+           $QueryStr+="&`$top=$Top" 
+        }
+        $ArmUriBld.Query=$QueryStr
+    }
+    PROCESS
+    {
+        foreach ($Id in $SubscriptionId)
+        {
+            if ($DigestEvents.IsPresent) {
+                $ArmUriBld.Path="subscriptions/$Id/providers/microsoft.insights/eventtypes/management/digestEvents"
+            }
+            else {
+                $ArmUriBld.Path="subscriptions/$Id/providers/microsoft.insights/eventtypes/management/values"
+            }
+            do
+            {
+                try 
+                {
+                    $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders -ErrorAction Stop
+                    Write-Output $ArmResult.value
+                    if([String]::IsNullOrEmpty($ArmResult.nextLink) -eq $false -and ($Top -eq 0))
+                    {
+                        $nextLink=$ArmResult.nextLink
+                        Write-Verbose "More results @ $nextLink"
+                        $ArmUriBld=New-Object System.UriBuilder($nextLink)
+                    }
+                }
+                catch [System.Exception] {
+                    $nextLink=$null
+                    Write-Warning "Subscription $Id - $_"
+                }
+            }
+            while ($nextLink -ne $null)              
+            
+        }
+    }
+    END
+    {
+
+    }
 }
