@@ -26,6 +26,7 @@ $Script:DefaultBillingApiVerion='2015-06-01-preview'
 $Script:DefaultWebsiteApiVersion='2016-08-01'
 $Script:DefaultMonitorApiVersion='2016-03-01'
 $Script:ClassicMonitorApiVersion='2014-06-01'
+$Script:DefaultEventLogApiVersion="2014-04-01"
 $Script:DefaultArmFrontDoor='https://management.azure.com'
 #endregion
 
@@ -143,10 +144,14 @@ Function ConvertFrom-ArmResourceId
             Write-Output $ResourceData
         }
     }
-    END{}
+    END
+    {
+
+    }
 }
 
 #endregion
+
 <#
     .SYNOPSIS
         Retrieves azure websites from the given subscription(s)
@@ -551,7 +556,6 @@ Function Get-ArmProvider
     {
 
     }
-
 }
 
 <#
@@ -680,7 +684,6 @@ Function Get-ArmResourceType
     {
 
     }
-
 }
 
 <#
@@ -935,7 +938,6 @@ Function Get-ArmLocation
     {
 
     }
-
 }
 
 <#
@@ -1044,7 +1046,6 @@ Function Get-ArmResourceLock
     {
 
     }
-
 }
 
 <#
@@ -1132,7 +1133,10 @@ Function Get-ArmFeature
             } while ($nextLink -ne $null)          
         }
     }
-    END{}
+    END
+    {
+
+    }
 
 }
 
@@ -1195,7 +1199,7 @@ Function Get-ArmResource
     
     BEGIN
     {
-        $AuthHeaders=@{'Authorization'="Bearer $AccessToken"}
+        $AuthHeaders=@{'Authorization'="Bearer $AccessToken";Accept='application/json';}
         $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
         $QueryStr="api-version=$ApiVersion"
         if ([String]::IsNullOrEmpty($Filter) -eq $false) {
@@ -1232,9 +1236,12 @@ Function Get-ArmResource
                     if([String]::IsNullOrEmpty($ArmResult.nextLink) -eq $false -and ($Top -eq 0))
                     {
                         $nextLink=$ArmResult.nextLink
-                        Write-Verbose "More results @ $nextLink"
+                        Write-Verbose "Page Size $($ArmResult.value.Count) More results @ $nextLink"
                         $ArmUriBld=New-Object System.UriBuilder($nextLink)
-                    }                    
+                    }
+                    else {
+                        $nextLink=$null
+                    }
                 }
                 catch [System.Exception] {
                     $nextLink=$null
@@ -1244,7 +1251,10 @@ Function Get-ArmResource
             while ($nextLink -ne $null)          
         }        
     }
-    END{}
+    END
+    {
+
+    }
 
 }
 
@@ -1286,7 +1296,7 @@ Function Get-ArmResourceInstance
     )
     BEGIN
     {
-        $AuthHeaders=@{'Authorization'="Bearer $AccessToken"}
+        $AuthHeaders=@{'Authorization'="Bearer $AccessToken";Accept='application/json';}
         $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
     }
     PROCESS
@@ -1320,7 +1330,10 @@ Function Get-ArmResourceInstance
             }
         }
     }
-    END{}
+    END
+    {
+
+    }
 }
 
 <#
@@ -1437,7 +1450,7 @@ Function Get-ArmUsageAggregate
                 $EndTimeOffset=New-Object System.DateTimeOffset($EndTime.Year,$EndTime.Month,$EndTime.Day,0,0,0,0)
             }
         }
-        $AuthHeaders=@{'Authorization'="Bearer $AccessToken"}
+        $AuthHeaders=@{'Authorization'="Bearer $AccessToken";Accept='application/json';}
         $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
         $StartTimeString=[Uri]::EscapeDataString($StartTimeOffset.ToString('o'))
         $EndTimeString=[Uri]::EscapeDataString($EndTimeOffset.ToString('o'))
@@ -1488,7 +1501,10 @@ Function Get-ArmUsageAggregate
             } while ($nextLink -ne $null)
         }
     }
-    END{}
+    END
+    {
+
+    }
 }
 
 <#
@@ -1667,10 +1683,10 @@ Function Get-ArmResourceMetricDefinition
                 if ($RequestResult.GetType().FullName -eq 'System.String') {
                     $RequestResult=$RequestResult.Replace("ResourceUri","resourceUri").Replace("ResourceId","resourceId")
                     $Result=$RequestResult|ConvertFrom-Json
-                    Write-Output $Result                    
+                    Write-Output $Result.value                    
                 }
                 else {
-                    Write-Output $RequestResult
+                    Write-Output $RequestResult.value
                 }
             }
             catch [System.Exception]
@@ -1846,7 +1862,7 @@ Function Get-ArmEventLog
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
         [Parameter(Mandatory=$false)]
         [System.String]
-        $ApiVersion='2016-09-01-preview'
+        $ApiVersion=$Script:DefaultEventLogApiVersion
     )
 
     BEGIN
@@ -1859,7 +1875,7 @@ Function Get-ArmEventLog
             $StartTime=(New-Object System.DateTimeOffset($End.AddHours(-12))).ToString('o')
             $EndTime=(New-Object System.DateTimeOffset($End)).ToString('o')                  
             #Default filter
-            $Filter="eventTimestamp ge '$StartTime' and eventTimestamp le '$EndTime'"
+            $Filter="eventTimestamp ge '$StartTime' and eventTimestamp le '$EndTime' and eventChannels eq 'Admin, Operation'"
         }
         if ($DigestEvents.IsPresent) {
             $ApiVersion="2014-04-01"
@@ -1874,10 +1890,13 @@ Function Get-ArmEventLog
     {
         foreach ($Id in $SubscriptionId)
         {
-            if ($DigestEvents.IsPresent) {
+            $TotalCount=0
+            if ($DigestEvents.IsPresent)
+            {
                 $ArmUriBld.Path="subscriptions/$Id/providers/microsoft.insights/eventtypes/management/digestEvents"
             }
-            else {
+            else
+            {
                 $ArmUriBld.Path="subscriptions/$Id/providers/microsoft.insights/eventtypes/management/values"
             }
             do
@@ -1885,21 +1904,29 @@ Function Get-ArmEventLog
                 try 
                 {
                     $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders -ErrorAction Stop
-                    Write-Output $ArmResult.value
-                    if([String]::IsNullOrEmpty($ArmResult.nextLink) -eq $false -and ($Top -eq 0))
+                    if($ArmResult.value -ne $null)
+                    {
+                        $TotalCount+=$ArmResult.value.Count
+                        Write-Output $ArmResult.value
+                    }
+                    if([String]::IsNullOrEmpty($ArmResult.nextLink) -eq $false -and ($Top -gt $TotalCount))
                     {
                         $nextLink=$ArmResult.nextLink
-                        Write-Verbose "More results @ $nextLink"
+                        Write-Verbose "Current Total Results:$TotalCount More results @ $nextLink"
                         $ArmUriBld=New-Object System.UriBuilder($nextLink)
                     }
+                    else
+                    {
+                        $nextLink=$null
+                    }
                 }
-                catch [System.Exception] {
+                catch [System.Exception]
+                {
                     $nextLink=$null
                     Write-Warning "Subscription $Id - $_"
                 }
             }
-            while ($nextLink -ne $null)              
-            
+            while ($nextLink -ne $null)     
         }
     }
     END
