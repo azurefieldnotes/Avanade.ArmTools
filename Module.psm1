@@ -501,55 +501,60 @@ Function Get-ArmProvider
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [System.String]
-        $ApiVersion=$Script:DefaultArmApiVersion
+        $ApiVersion=$Script:DefaultArmApiVersion,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [String]
+        $ExpandFilter
     )
 
     BEGIN
     {
-        $AuthHeaders=@{'Authorization'="Bearer $AccessToken"}
+        $AuthHeaders=@{'Authorization'="Bearer $AccessToken";Accept='application/json'}
         $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
         $ArmUriBld.Query="api-version=$ApiVersion"
     }
     PROCESS
     {
-
-        if($Subscription -eq $null -and [String]::IsNullOrEmpty($SubscriptionId)) {
-            $ArmUriBld.Path="providers"
-            if([String]::IsNullOrEmpty($Namespace) -eq $false)
-            {
-                $ArmUriBld.Path="providers/$Namespace"
-            }
-            $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders
-            if([String]::IsNullOrEmpty($Namespace) -eq $false) {
-                Write-Output $ArmResult
-            }
-            else {
-                #TODO: Could this page?
-                Write-Output $ArmResult.value
+        if ($PSCmdlet.ParameterSetName -eq 'object') {
+            $SubscriptionId=@()
+            foreach ($Sub in $Subscription) {
+                $SubscriptionId+=$Sub.subscriptionId
             }
         }
-        else {
-            if($PSCmdlet.ParameterSetName -eq 'object')
+        foreach ($item in $SubscriptionId)
+        {
+            $ArmUriBld.Path="subscriptions/$item/providers"
+            if([String]::IsNullOrEmpty($Namespace) -eq $false)
             {
-                foreach ($sub in $Subscription) {
-                    $SubscriptionId+=$sub.subscriptionId
-                }
+                $ArmUriBld.Path="subscriptions/$item/providers/$Namespace"
+                $NamespaceResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders -ErrorAction Stop
+                Write-Output $NamespaceResult
             }
-            foreach ($item in $SubscriptionId) {
-                $ArmUriBld.Path="subscriptions/$item/providers"
-                if([String]::IsNullOrEmpty($Namespace) -eq $false)
+            else 
+            {
+                if ([String]::IsNullOrEmpty($ExpandFilter) -eq $false) {
+                    $ArmUriBld.Query="api-version=$ApiVersion&`$expand=$ExpandFilter"
+                }
+                do
                 {
-                    $ArmUriBld.Path="subscriptions/$item/providers/$Namespace"
+                    try 
+                    {
+                        $GeneralResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders -ErrorAction Stop
+                        $nextLink=$GeneralResult.nextLink
+                        if ([String]::IsNullOrEmpty($nextLink) -eq $false) {
+                            Write-Verbose "More results available at $nextLink"
+                            $ArmUriBld=New-Object System.UriBuilder($nextLink)
+                        }
+                        Write-Output $GeneralResult.value
+                    }
+                    catch [System.Exception] {
+                        $nextLink=$null
+                        Write-Warning "Subscription $item - $_"
+                    }
                 }
-                $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders
-                if([String]::IsNullOrEmpty($Namespace) -eq $false) {
-                    Write-Output $ArmResult
-                }
-                else {
-                    #TODO: Could this page?
-                    Write-Output $ArmResult.value
-                }
-            }            
+                while ($nextLink -ne $null)
+            }
         }
     }
     END
