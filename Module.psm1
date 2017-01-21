@@ -449,7 +449,7 @@ Function Get-ArmSubscription
     if ([string]::IsNullOrEmpty($SubscriptionId) -eq $false) {
         $ArmUriBld.Path+="/$SubscriptionId"
     }
-    $AuthHeaders=@{'Authorization'="Bearer $AccessToken"}
+    $AuthHeaders=@{'Authorization'="Bearer $AccessToken";Accept='application/json';}
     $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders
     if ([string]::IsNullOrEmpty($SubscriptionId) -eq $false) {
         Write-Output $ArmResult
@@ -510,7 +510,7 @@ Function Get-ArmProvider
 
     BEGIN
     {
-        $AuthHeaders=@{'Authorization'="Bearer $AccessToken";Accept='application/json'}
+        $AuthHeaders=@{'Authorization'="Bearer $AccessToken";Accept='application/json';}
         $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
         $ArmUriBld.Query="api-version=$ApiVersion"
     }
@@ -1666,11 +1666,11 @@ Function Get-ArmResourceMetricDefinition
         foreach ($item in $ResourceId) 
         {
             $ArmResource=$item|ConvertFrom-ArmResourceId
-            if($ArmResource.NameSpace -eq "Microsoft.ClassicCompute/virtualMachines")
+            if($ArmResource.NameSpace -eq "Microsoft.ClassicCompute")
             {
                 $ClassicApiVersion='2014-04-01'
             }           
-            if ($ArmResource.NameSpace -in "Microsoft.ClassicCompute/virtualMachines",'Microsoft.classicNetwork/virtualNetworks') {
+            if ($ArmResource.NameSpace -like "Microsoft.Classic*") {
                 $ArmUriBld.Path="subscriptions/$($ArmResource.SubscriptionId)/resourceGroups/$($ArmResource.ResourceGroup)" + `
                     "/providers/$($ArmResource.NameSpace)/$($ArmResource.ResourceType)/$($ArmResource.Name)/metricDefinitions"
                 $ArmUriBld.Query="api-version=$ClassicApiVersion"
@@ -1729,7 +1729,7 @@ Function Get-ArmResourceMetric
         $ApiVersion='2016-09-01',
         [Parameter(Mandatory=$false)]
         [System.String]
-        $ClassicApiVersion='2016-06-01'
+        $ClassicApiVersion='2014-04-01'
     )
 
     BEGIN
@@ -1752,19 +1752,19 @@ Function Get-ArmResourceMetric
                     $StartTime=(New-Object System.DateTimeOffset($End.AddHours(-1))).ToString('o')
                     $EndTime=(New-Object System.DateTimeOffset($End)).ToString('o')
                     $Filter="startTime eq $($StartTime) and endTime eq $($EndTime) and timeGrain eq duration'PT1H'"
-                    $ArmUriBld.Query="api-version=$ClassicApiVersion&`$filter=$Filter"
                 }
+                $ArmUriBld.Query="api-version=$ClassicApiVersion&`$filter=$Filter"
             }
             else 
             {
                 $ArmUriBld.Path="$item/providers/microsoft.insights/metrics"
                 if([String]::IsNullOrEmpty($Filter))
                 {
-                    $ArmUriBld.Query="api-version=$ClassicApiVersion"
+                    $ArmUriBld.Query="api-version=$ApiVersion"
                 }
                 else
                 {
-                    $ArmUriBld.Query="api-version=$ClassicApiVersion&`$filter=$Filter"
+                    $ArmUriBld.Query="api-version=$ApiVersion&`$filter=$Filter"
                 }
             }
             try 
