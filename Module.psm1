@@ -1473,6 +1473,7 @@ Function Get-ArmUsageAggregate
         foreach ($item in $SubscriptionId)
         {
             $ResultPages=0
+            $TotalItems=0
             $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Commerce/UsageAggregates"
             do
             {
@@ -1480,14 +1481,19 @@ Function Get-ArmUsageAggregate
                 try 
                 {
                     $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json' -ErrorAction Stop
+                    if($ArmResult.error -ne $null)
+                    {
+                        throw "There was an error code:$($ArmResult.error.code) message:$($ArmResult.error.message)"
+                    }
                     Write-Output $ArmResult.value
+                    $TotalItems+=$ArmResult.value.Count
                     if ($LimitResultPages -gt 0) {
                         if ($ResultPages -lt $LimitResultPages) {
                             $nextLink=$ArmResult.nextLink
                         }
                         else {
                             $nextLink=$null
-                            Write-Verbose "Stopped iterating at $ResultPages pages. More data available?:$([string]::IsNullOrEmpty($nextLink))"
+                            Write-Verbose "Stopped iterating at $ResultPages pages. Iterated Items:$TotalItems More data available?:$([string]::IsNullOrEmpty($nextLink))"
                         }
                     }            
                     else {
@@ -1495,7 +1501,7 @@ Function Get-ArmUsageAggregate
                     }
                     if([String]::IsNullOrEmpty($nextLink) -eq $false)
                     {
-                        Write-Verbose "More results @ $nextLink"
+                        Write-Verbose "Current Result Page:$ResultPages. Iterated Items:$TotalItems More results @ $nextLink"
                         $ArmUriBld=New-Object System.UriBuilder($nextLink)
                     }                    
                 }
@@ -1666,6 +1672,7 @@ Function Get-ArmResourceMetricDefinition
         foreach ($item in $ResourceId) 
         {
             $ArmResource=$item|ConvertFrom-ArmResourceId
+            #HACK! (Do something better)
             if($ArmResource.NameSpace -eq "Microsoft.ClassicCompute")
             {
                 $ClassicApiVersion='2014-04-01'
