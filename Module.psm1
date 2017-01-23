@@ -17,7 +17,7 @@ $Script:Iso3166Codes=@(
     'RE','RO','RU','RW','BL','SH','KN','LC','MF','PM','VC','WS','SM','ST','SA','SN','RS','SC',
     'SL','SG','SX','SK','SI','SB','SO','ZA','GS','SS','ES','LK','SD','SR','SJ','SZ','SE','CH',
     'SY','TW','TJ','TZ','TH','TL','TG','TK','TO','TT','TN','TR','TM','TC','TV','UG','UA','AE',
-    'GB','US','UM','UY','UZ','VU','VE','VN','VG','VI','WF','EH','YE','ZM','ZW'    
+    'GB','US','UM','UY','UZ','VU','VE','VN','VG','VI','WF','EH','YE','ZM','ZW'
 )
 $Script:DefaultArmApiVersion="2016-09-01"
 $Script:DefaultResourceLockApiVersion="2015-01-01"
@@ -44,14 +44,14 @@ function CreateDynamicValidateSetParameter
         $ParameterName,
         [Parameter(Mandatory=$false)]
         [string[]]
-        $ParameterSetNames= "__AllParameterSets",             
+        $ParameterSetNames= "__AllParameterSets",
         # String ValidateSet Array
         [Parameter(Mandatory=$true)]
         [System.Object[]]
         $ParameterValues,
         [Parameter(Mandatory=$false)]
         [System.Type]
-        $ParameterType=[String],        
+        $ParameterType=[String],
         [Parameter(Mandatory=$false)]
         [object]
         $DefaultValue,
@@ -92,6 +92,104 @@ function CreateDynamicValidateSetParameter
     return $RuntimeParameter
 }
 
+function GetArmODataResult
+{
+    [CmdletBinding(ConfirmImpact='None')]
+    param
+    (
+        [Parameter(Mandatory=$true)]
+        [System.Uri]
+        $Uri,
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $Headers,
+        [Parameter(Mandatory=$false)]
+        [System.String]
+        $ContentType='application/json',
+        [Parameter(Mandatory=$false)]
+        [System.Int32]
+        $LimitResultPages,
+        [Parameter(Mandatory=$false)]
+        [System.String]
+        $ValueProperty='value',
+        [Parameter(Mandatory=$false)]
+        [System.String]
+        $NextLinkProperty='nextLink',
+        [Parameter(Mandatory=$false)]
+        [System.String]
+        $ErrorProperty='error'
+    )
+
+    $ResultPages=0
+    $TotalItems=0
+    do
+    {
+        $ResultPages++
+        try
+        {
+            $ArmResult=Invoke-RestMethod -Uri $Uri -Headers $Headers -ContentType $ContentType
+            if ($ArmResult -ne $null)
+            {
+                if($ArmResult.PSobject.Properties.name -match $ErrorProperty)
+                {
+                    throw ($ArmResult|Select-Object -ExpandProperty $ErrorProperty)|ConvertTo-Json
+                }
+                elseif($ArmResult.PSobject.Properties.name -match $ValueProperty)
+                {
+                    $RequestValue=$ArmResult|Select-Object -ExpandProperty $ValueProperty
+                }
+                else
+                {
+                    $RequestValue=$null
+                }
+                $TotalItems+=$RequestValue.Count
+                if ($LimitResultPages -gt 0)
+                {
+                    if ($ResultPages -lt $LimitResultPages)
+                    {
+                        if($ArmResult.PSobject.Properties.name -match $NextLinkProperty)
+                        {
+                            $Uri=$ArmResult|Select-Object -ExpandProperty $NextLinkProperty
+                            Write-Verbose "[GetArmODataResult] Total Items:$TotalItems. More items available @ $Uri"
+                        }
+                        else
+                        {
+                            $Uri=$null
+                        }
+                    }
+                    else
+                    {
+                        $Uri=$null
+                        Write-Verbose "[GetArmODataResult] Stopped iterating at $ResultPages pages. Iterated Items:$TotalItems More data available?:$([string]::IsNullOrEmpty($ArmResult.value))"
+                    }
+                }
+                else
+                {
+                    if($ArmResult.PSobject.Properties.name -match $NextLinkProperty)
+                    {
+                        $Uri=$ArmResult|Select-Object -ExpandProperty $NextLinkProperty
+                        Write-Verbose "[GetArmODataResult] Total Items:$TotalItems. More items available @ $Uri"
+                    }
+                    else
+                    {
+                        $Uri=$null
+                    }
+                }
+                Write-Output $RequestValue
+            }
+            else
+            {
+                $Uri=$null
+            }
+        }
+        catch
+        {
+            Write-Warning "[GetArmODataResult]Error $Uri $_"
+            $Uri=$null
+        }
+    } while ($Uri -ne $null)
+}
+
 <#
     .SYNOPSIS
         Resolves resource segments from an ARM resource id
@@ -111,7 +209,7 @@ Function ConvertFrom-ArmResourceId
     PROCESS
     {
         foreach ($ResourceId in $Id) {
-            
+
             $IdPieces=$ResourceId.TrimStart('/').Split('/')
             $LastIndex=$IdPieces.Length-1
             #Resolve the subscription and provider
@@ -156,19 +254,19 @@ Function ConvertFrom-ArmResourceId
     .SYNOPSIS
         Retrieves azure websites from the given subscription(s)
     .PARAMETER Subscription
-        The azure subscription(s)    
+        The azure subscription(s)
     .PARAMETER SubscriptionId
         The azure subscription id(s)
     .PARAMETER ResourceGroupName
         The website resource group
     .PARAMETER WebsiteName
-        The website name        
+        The website name
     .PARAMETER AccessToken
         The OAuth access token
     .PARAMETER ApiEndpoint
         The ARM api endpoint
     .PARAMETER ApiVersion
-        The ARM api version        
+        The ARM api version
 #>
 Function Get-ArmWebSite
 {
@@ -200,23 +298,20 @@ Function Get-ArmWebSite
         [Parameter(Mandatory=$false,ParameterSetName='id')]
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='idWithName')]
-        [Parameter(Mandatory=$false,ParameterSetName='objectWithName')]        
+        [Parameter(Mandatory=$false,ParameterSetName='objectWithName')]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
         [Parameter(Mandatory=$false,ParameterSetName='id')]
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='idWithName')]
-        [Parameter(Mandatory=$false,ParameterSetName='objectWithName')]        
+        [Parameter(Mandatory=$false,ParameterSetName='objectWithName')]
         [System.String]
         $ApiVersion=$Script:DefaultWebsiteApiVersion
     )
 
     BEGIN
     {
-        $Headers=@{
-            'Authorization'="Bearer $AccessToken";
-            'Accept'='application/json';
-        }
+        $Headers=@{'Authorization'="Bearer $AccessToken";'Accept'='application/json';}
         $UriBuilder=New-Object System.UriBuilder($ApiEndpoint)
         $UriBuilder.Query="api-version=$ApiVersion"
     }
@@ -225,30 +320,26 @@ Function Get-ArmWebSite
         if ($PSCmdlet.ParameterSetName -in 'object','objectWithName') {
             $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
         }
-        foreach ($id in $SubscriptionId) 
+        foreach ($id in $SubscriptionId)
         {
-            if ($PSCmdlet.ParameterSetName -in 'objectWithName','idWithName') {
-                $UriBuilder.Path="/subscriptions/$Id/resourcegroups/$ResourceGroupName/providers/Microsoft.Web/sites/$WebsiteName"
-                $ArmResult=Invoke-RestMethod -Uri $UriBuilder.Uri -Headers $Headers -ContentType 'application/json'
-                Write-Output $ArmResult
-            }
-            else {
-                $UriBuilder.Path="/subscriptions/$Id/providers/Microsoft.Web/sites"
-                do 
+            try
+            {
+                if ($PSCmdlet.ParameterSetName -in 'objectWithName','idWithName')
                 {
-                    try 
-                    {
-                        $ArmResult=Invoke-RestMethod -Uri $UriBuilder.Uri -Headers $Headers -ContentType 'application/json'
-                        Write-Output $ArmResult.value
-                        $nextLink=$ArmResult.nextLink
-                        $UriBuilder=New-Object System.UriBuilder($nextLink)                
-                    }
-                    catch [System.Exception] {
-                        Write-Warning $_
-                        $nextLink=$null
-                    }
-                } 
-                while ($nextLink -ne $null)
+                    $UriBuilder.Path="/subscriptions/$Id/resourcegroups/$ResourceGroupName/providers/Microsoft.Web/sites/$WebsiteName"
+                    $ArmResult=Invoke-RestMethod -Uri $UriBuilder.Uri -Headers $Headers -ContentType 'application/json'
+                    Write-Output $ArmResult
+                }
+                else
+                {
+                    $UriBuilder.Path="/subscriptions/$Id/providers/Microsoft.Web/sites"
+                    $ArmResult=GetArmODataResult -Uri $UriBuilder.Uri -Headers $Headers -ContentType 'application/json'
+                    Write-Output $ArmResult
+                }
+            }
+            catch
+            {
+                Write-Warning "[Get-ArmWebSite] Subscription $id $_"
             }
         }
     }
@@ -262,7 +353,7 @@ Function Get-ArmWebSite
     .SYNOPSIS
         Retrieves publishing credential(s) for given website(s)
     .PARAMETER Subscription
-        The azure subscription(s)    
+        The azure subscription(s)
     .PARAMETER SubscriptionId
         The azure subscription id(s)
     .PARAMETER ResourceGroupName
@@ -276,7 +367,7 @@ Function Get-ArmWebSite
     .PARAMETER ApiEndpoint
         The ARM api endpoint
     .PARAMETER ApiVersion
-        The ARM api version        
+        The ARM api version
 #>
 Function Get-ArmWebSitePublishingCredential
 {
@@ -288,11 +379,11 @@ Function Get-ArmWebSitePublishingCredential
         $SubscriptionId,
         [Parameter(Mandatory=$true,ParameterSetName='object')]
         [System.Object]
-        $Subscription,                
+        $Subscription,
         [Parameter(Mandatory=$true,ParameterSetName='id')]
         [Parameter(Mandatory=$true,ParameterSetName='object')]
         [System.String]
-        $ResourceGroupName,        
+        $ResourceGroupName,
         [Parameter(Mandatory=$true,ParameterSetName='id')]
         [Parameter(Mandatory=$true,ParameterSetName='object')]
         [System.String]
@@ -319,20 +410,20 @@ Function Get-ArmWebSitePublishingCredential
 
     BEGIN
     {
-        $Headers=@{
-            'Authorization'="Bearer $AccessToken";
-            'Accept'='application/json';
-        }
-        if ($PSCmdlet.ParameterSetName -eq "object") {
+        $Headers=@{'Authorization'="Bearer $AccessToken";'Accept'='application/json';}
+    }
+    PROCESS
+    {
+
+        if ($PSCmdlet.ParameterSetName -eq "object")
+        {
             $SubscriptionId=$Subscription.subscriptionId
             $ArmSite=Get-ArmWebSite -SubscriptionId $SubscriptionId -WebsiteName $WebsiteName `
                 -ResourceGroupName $ResourceGroupName -AccessToken $AccessToken `
                 -ApiEndpoint $ApiEndpoint -ApiVersion $ApiVersion
             $Website+=$ArmSite
-        }          
-    }
-    PROCESS
-    {
+        }
+
         foreach ($item in $Website)
         {
             $UriBuilder=New-Object System.UriBuilder($ApiEndpoint)
@@ -356,7 +447,7 @@ Function Get-ArmWebSitePublishingCredential
     .PARAMETER ApiEndpoint
         The ARM api endpoint
     .PARAMETER ApiVersion
-        The ARM api version        
+        The ARM api version
 #>
 Function Get-ArmTenant
 {
@@ -366,44 +457,26 @@ Function Get-ArmTenant
         [Parameter(Mandatory=$true,ParameterSetName='id')]
         [System.String[]]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='id')]        
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='id')]        
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
         [System.String]
-        $ApiVersion=$Script:DefaultArmApiVersion        
+        $ApiVersion=$Script:DefaultArmApiVersion
     )
     BEGIN
     {
-        $Headers=@{
-            'Authorization'="Bearer $AccessToken";
-            'Accept'='application/json';
-        }
+        $Headers=@{'Authorization'="Bearer $AccessToken";'Accept'='application/json';}
     }
     PROCESS
     {
-        foreach ($token in $AccessToken) {
+        foreach ($token in $AccessToken)
+        {
             $ArmUriBld=New-Object System.UriBuilder($Script:DefaultArmFrontDoor)
             $ArmUriBld.Path='tenants'
             $ArmUriBld.Query="api-version=$ApiVersion"
-            do
-            {
-                try 
-                {
-                    $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $Headers -ErrorAction Stop
-                    Write-Output $ArmResult.value
-                    if([String]::IsNullOrEmpty($nextLink) -eq $false)
-                    {
-                        Write-Verbose "More results @ $nextLink"
-                        $ArmUriBld=New-Object System.UriBuilder($nextLink)
-                    }                    
-                }
-                catch [System.Exception] {
-                    $nextLink=$null
-                    Write-Warning "Tenants - $_"
-                }
-            }
-            while ($nextLink -ne $null)
+            $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $Headers
+            Write-Output $ArmResult
         }
     }
     END
@@ -516,44 +589,37 @@ Function Get-ArmProvider
     }
     PROCESS
     {
-        if ($PSCmdlet.ParameterSetName -eq 'object') {
-            $SubscriptionId=@()
-            foreach ($Sub in $Subscription) {
+        if ($PSCmdlet.ParameterSetName -eq 'object')
+        {
+            foreach ($Sub in $Subscription)
+            {
                 $SubscriptionId+=$Sub.subscriptionId
             }
         }
         foreach ($item in $SubscriptionId)
         {
             $ArmUriBld.Path="subscriptions/$item/providers"
-            if([String]::IsNullOrEmpty($Namespace) -eq $false)
+            try
             {
-                $ArmUriBld.Path="subscriptions/$item/providers/$Namespace"
-                $NamespaceResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders -ErrorAction Stop
-                Write-Output $NamespaceResult
-            }
-            else 
-            {
-                if ([String]::IsNullOrEmpty($ExpandFilter) -eq $false) {
-                    $ArmUriBld.Query="api-version=$ApiVersion&`$expand=$ExpandFilter"
-                }
-                do
+                if([String]::IsNullOrEmpty($Namespace) -eq $false)
                 {
-                    try 
-                    {
-                        $GeneralResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders -ErrorAction Stop
-                        $nextLink=$GeneralResult.nextLink
-                        if ([String]::IsNullOrEmpty($nextLink) -eq $false) {
-                            Write-Verbose "More results available at $nextLink"
-                            $ArmUriBld=New-Object System.UriBuilder($nextLink)
-                        }
-                        Write-Output $GeneralResult.value
-                    }
-                    catch [System.Exception] {
-                        $nextLink=$null
-                        Write-Warning "Subscription $item - $_"
-                    }
+                    $ArmUriBld.Path="subscriptions/$item/providers/$Namespace"
+                    $NamespaceResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders -ErrorAction Stop
+                    Write-Output $NamespaceResult
                 }
-                while ($nextLink -ne $null)
+                else
+                {
+                    if ([String]::IsNullOrEmpty($ExpandFilter) -eq $false)
+                    {
+                        $ArmUriBld.Query="api-version=$ApiVersion&`$expand=$ExpandFilter"
+                    }
+                    $NamespaceResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json'
+                    Write-Output $NamespaceResult
+                }
+            }
+            catch
+            {
+                Write-Warning "[Get-ArmProvider] Subscription $item $_"
             }
         }
     }
@@ -573,7 +639,7 @@ Function Get-ArmProvider
     .PARAMETER Namespace
         The resource group name
     .PARAMETER ResourceType
-        The fully qualified type name        
+        The fully qualified type name
     .PARAMETER AccessToken
         The OAuth access token
     .PARAMETER ApiEndpoint
@@ -627,54 +693,66 @@ Function Get-ArmResourceType
         $AuthHeaders=@{'Authorization'="Bearer $AccessToken"}
         $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
         $ArmUriBld.Query="api-version=$ApiVersion"
-        if($PSCmdlet.ParameterSetName -in 'objectType','idType') {
+        if($PSCmdlet.ParameterSetName -in 'objectType','idType')
+        {
             $Namespace=$ResourceType.Split('/')|Select-Object -First 1
             $TypeName=$ResourceType.Replace("$Namespace/",[String]::Empty)
         }
     }
     PROCESS
     {
-        if ($Subscription -eq $null -and [String]::IsNullOrEmpty($SubscriptionId)) {
-            if($PSCmdlet.ParameterSetName -in 'objectType','idType') {
+        if ($Subscription -eq $null -and [String]::IsNullOrEmpty($SubscriptionId))
+        {
+            if($PSCmdlet.ParameterSetName -in 'objectType','idType')
+            {
                 $ArmUriBld.Path="providers/$Namespace"
                 $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders
                 $ResProvType=$ArmResult.resourceTypes|Where-Object{$_.resourceType -eq $TypeName }|Select-Object -First 1
-                if ($ResProvType -ne $null) {
+                if ($ResProvType -ne $null)
+                {
                     Write-Output $ResProvType
                 }
-                else {
-                    Write-Warning "$ResourceType was not found in subscription:$item"
+                else
+                {
+                    Write-Warning "[Get-ArmResourceType] $ResourceType was not found in subscription:$item"
                 }
             }
-            else {
+            else
+            {
                 $ArmUriBld.Path="providers/$Namespace"
                 $Providers=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders
                 foreach ($Provider in $Providers)
                 {
                     Write-Output $Provider.resourceTypes
                 }
-            }            
+            }
         }
         else {
             if($PSCmdlet.ParameterSetName -eq 'object')
             {
-                foreach ($sub in $Subscription) {
+                foreach ($sub in $Subscription)
+                {
                     $SubscriptionId+=$sub.subscriptionId
                 }
             }
-            foreach ($item in $SubscriptionId) {
-                if($PSCmdlet.ParameterSetName -in 'objectType','idType') {
+            foreach ($item in $SubscriptionId)
+            {
+                if($PSCmdlet.ParameterSetName -in 'objectType','idType')
+                {
                     $ArmUriBld.Path="subscriptions/$item/providers/$Namespace"
                     $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders
                     $ResProvType=$ArmResult.resourceTypes|Where-Object{$_.resourceType -eq $TypeName }|Select-Object -First 1
-                    if ($ResProvType -ne $null) {
+                    if ($ResProvType -ne $null)
+                    {
                         Write-Output $ResProvType
                     }
-                    else {
-                        Write-Warning "$ResourceType was not found in subscription:$item"
+                    else
+                    {
+                        Write-Warning "[Get-ArmResourceType] $ResourceType was not found in subscription:$item"
                     }
                 }
-                else {
+                else
+                {
                     $ArmUriBld.Path="subscriptions/$item/providers/$Namespace"
                     $Providers=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders
                     foreach ($Provider in $Providers)
@@ -682,7 +760,7 @@ Function Get-ArmResourceType
                         Write-Output $Provider.resourceTypes
                     }
                 }
-            }               
+            }
         }
     }
     END
@@ -699,7 +777,7 @@ Function Get-ArmResourceType
     .PARAMETER Subscription
         The azure subscription(s)
     .PARAMETER ResourceType
-        The fully qualified type name        
+        The fully qualified type name
     .PARAMETER AccessToken
         The OAuth access token
     .PARAMETER ApiEndpoint
@@ -742,14 +820,15 @@ Function Get-ArmResourceTypeApiVersion
     }
     PROCESS
     {
-        if ($PSCmdlet.ParameterSetName -eq "object") {
-            $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId    
+        if ($PSCmdlet.ParameterSetName -eq "object")
+        {
+            $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
         }
-        foreach ($item in $SubscriptionId) {
-            $ArmResourceType=Get-ArmResourceType -SubscriptionId $SubscriptionId `
-                -ResourceType $ResourceType -AccessToken $AccessToken `
-                -ApiEndpoint $ApiEndpoint -ApiVersion $ApiVersion
-                Write-Output $ArmResourceType.apiVersions
+        foreach ($item in $SubscriptionId)
+        {
+            $ArmResourceType=Get-ArmResourceType -SubscriptionId $SubscriptionId -AccessToken $AccessToken `
+                -ResourceType $ResourceType -ApiEndpoint $ApiEndpoint -ApiVersion $ApiVersion
+            Write-Output $ArmResourceType.apiVersions
         }
     }
     END
@@ -813,28 +892,34 @@ Function Get-ArmResourceGroup
     {
         if($PSCmdlet.ParameterSetName -eq 'object')
         {
-            foreach ($sub in $Subscription) {
+            foreach ($sub in $Subscription)
+            {
                 $SubscriptionId+=$sub.subscriptionId
             }
         }
-        foreach ($item in $SubscriptionId) {
+        foreach ($item in $SubscriptionId)
+        {
             $ArmUriBld.Path="subscriptions/$item/resourcegroups"
             if([String]::IsNullOrEmpty($Name) -eq $false)
             {
                 $ArmUriBld.Path+="/$Name"
             }
-            try {
+            try
+            {
                 $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders -ErrorAction Continue
-                if([String]::IsNullOrEmpty($Name) -eq $false) {
+                if([String]::IsNullOrEmpty($Name) -eq $false)
+                {
                     Write-Output $ArmResult
                 }
-                else {
+                else
+                {
                     Write-Output $ArmResult.value
                 }
             }
-            catch [System.Exception] {
-                Write-Warning $_
-            }          
+            catch [System.Exception]
+            {
+                Write-Warning "[Get-ArmResourceGroup] Subscription $item $_"
+            }
         }
     }
     END
@@ -897,44 +982,56 @@ Function Get-ArmLocation
     }
     PROCESS
     {
-        if ($Subscription -eq $null -and [String]::IsNullOrEmpty($SubscriptionId)) {     
+        if ($Subscription -eq $null -and [String]::IsNullOrEmpty($SubscriptionId))
+        {
             $ArmUriBld.Path='locations'
             $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json'
-            if([String]::IsNullOrEmpty($Location) -eq $false) {
+            if([String]::IsNullOrEmpty($Location) -eq $false)
+            {
                 $ArmLocation=$ArmResult.value|Where-Object{$_.name -eq $Location -or $_.displayName -eq $Location}|Select-Object -First 1
-                if($ArmLocation -ne $null) {
+                if($ArmLocation -ne $null)
+                {
                     Write-Output $ArmLocation
                 }
-                else {
-                    Write-Warning "There is no location $Location available"
+                else
+                {
+                    Write-Warning "[Get-ArmLocation] There is no location $Location available"
                 }
             }
-            else {
+            else
+            {
                 Write-Output $ArmResult.value
             }
         }
-        else {
+        else
+        {
             if($PSCmdlet.ParameterSetName -eq 'object')
             {
-                foreach ($sub in $Subscription) {
+                foreach ($sub in $Subscription)
+                {
                     $SubscriptionId+=$sub.subscriptionId
                 }
             }
-            foreach ($item in $SubscriptionId) {
+            foreach ($item in $SubscriptionId)
+            {
                 $ArmUriBld.Path="subscriptions/$item/locations"
                 $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json'
-                if([String]::IsNullOrEmpty($Location) -eq $false) {
-                $ArmLocation=$ArmResult.value|Where-Object{$_.name -eq $Location -or $_.displayName -eq $Location}|Select-Object -First 1
-                    if($ArmLocation -ne $null) {
+                if([String]::IsNullOrEmpty($Location) -eq $false)
+                {
+                    $ArmLocation=$ArmResult.value|Where-Object{$_.name -eq $Location -or $_.displayName -eq $Location}|Select-Object -First 1
+                    if($ArmLocation -ne $null)
+                    {
                         Write-Output $ArmLocation
                     }
-                    else {
-                        Write-Warning "There is no location $Location available"
+                    else
+                    {
+                        Write-Warning "[Get-ArmLocation] There is no location $Location available"
                     }
                 }
-                else {
+                else
+                {
                     Write-Output $ArmResult.value
-                }                
+                }
             }
 
         }
@@ -957,13 +1054,13 @@ Function Get-ArmLocation
     .PARAMETER ResourceType
         The resource type to scope the query
     .PARAMETER ResourceName
-        The resource name to scope the query           
+        The resource name to scope the query
     .PARAMETER AccessToken
         The OAuth access token
     .PARAMETER ApiEndpoint
         The ARM api endpoint
     .PARAMETER ApiVersion
-        The ARM api version        
+        The ARM api version
 #>
 Function Get-ArmResourceLock
 {
@@ -1004,7 +1101,7 @@ Function Get-ArmResourceLock
 
     BEGIN
     {
-        $AuthHeaders=@{'Authorization'="Bearer $AccessToken"}
+        $AuthHeaders=@{'Authorization'="Bearer $AccessToken";Accept='application/json';}
         $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
         $ArmUriBld.Query="api-version=$ApiVersion"
     }
@@ -1012,38 +1109,32 @@ Function Get-ArmResourceLock
     {
         if($PSCmdlet.ParameterSetName -eq 'object')
         {
-            foreach ($sub in $Subscription) {
+            foreach ($sub in $Subscription)
+            {
                 $SubscriptionId+=$sub.subscriptionId
             }
         }
-        foreach ($item in $SubscriptionId) 
+        foreach ($item in $SubscriptionId)
         {
             $ArmUriBld.Path="subscriptions/$item"
-            if([String]::IsNullOrEmpty($ResourceGroup) -eq $false) {
+            if([String]::IsNullOrEmpty($ResourceGroup) -eq $false)
+            {
                 $ArmUriBld.Path+="/resourceGroups/$ResourceGroup"
             }
-            if([String]::IsNullOrEmpty($ResourceType) -eq $false -and [String]::IsNullOrEmpty($ResourceName) -eq $false){
+            if([String]::IsNullOrEmpty($ResourceType) -eq $false -and [String]::IsNullOrEmpty($ResourceName) -eq $false)
+            {
                 $ArmUriBld.Path+="/providers/$ResourceType/$ResourceName"
             }
-            $ArmUriBld.Path+="/providers/microsoft.authorization/locks"            
-            do
+            $ArmUriBld.Path+="/providers/microsoft.authorization/locks"
+            try
             {
-                try 
-                {
-                    $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders -ErrorAction Stop
-                    Write-Output $ArmResult.value
-                    if([String]::IsNullOrEmpty($nextLink) -eq $false)
-                    {
-                        Write-Verbose "More results @ $nextLink"
-                        $ArmUriBld=New-Object System.UriBuilder($nextLink)
-                    }                    
-                }
-                catch [System.Exception] {
-                    $nextLink=$null
-                    Write-Warning "Subscription $item - $_"
-                }
+                $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json'
+                Write-Output $ArmResult
             }
-            while ($nextLink -ne $null)          
+            catch
+            {
+                Write-Warning "[Get-ArmResourceLock] Subscription $item $_"
+            }
         }
 
     }
@@ -1100,7 +1191,7 @@ Function Get-ArmFeature
 
     BEGIN
     {
-        $AuthHeaders=@{'Authorization'="Bearer $AccessToken"}
+        $AuthHeaders=@{'Authorization'="Bearer $AccessToken";Accept='application/json'}
         $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
         $ArmUriBld.Query="api-version=$ApiVersion"
     }
@@ -1108,34 +1199,27 @@ Function Get-ArmFeature
     {
         if($PSCmdlet.ParameterSetName -eq 'object')
         {
-            foreach ($sub in $Subscription) {
+            foreach ($sub in $Subscription)
+            {
                 $SubscriptionId+=$sub.subscriptionId
             }
         }
-        foreach ($item in $SubscriptionId) 
+        foreach ($item in $SubscriptionId)
         {
             $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Features/features"
-            do 
+            if([String]::IsNullOrEmpty($Namespace) -eq $false)
             {
-                try 
-                {
-                    if([String]::IsNullOrEmpty($Namespace) -eq $false)
-                    {
-                        $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Features/providers/$Namespace/features"
-                    }
-                    $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders -ErrorAction Continue
-                    Write-Output $ArmResult.value
-                    if([String]::IsNullOrEmpty($nextLink) -eq $false)
-                    {
-                        Write-Verbose "More results @ $nextLink"
-                        $ArmUriBld=New-Object System.UriBuilder($nextLink)
-                    }
-                }
-                catch [System.Exception] {
-                    $nextLink=$null
-                    Write-Warning "Subscription $item - $_"                                        
-                }                
-            } while ($nextLink -ne $null)          
+                $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Features/providers/$Namespace/features"
+            }
+            try
+            {
+                $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json'
+                Write-Output $ArmResult
+            }
+            catch
+            {
+                Write-Warning "[Get-ArmFeature] Subscription $item - $_"
+            }
         }
     }
     END
@@ -1163,7 +1247,7 @@ Function Get-ArmFeature
     .PARAMETER ApiEndpoint
         The ARM api endpoint
     .PARAMETER ApiVersion
-        The ARM api version        
+        The ARM api version
 #>
 Function Get-ArmResource
 {
@@ -1181,13 +1265,13 @@ Function Get-ArmResource
         [System.String]
         $ResourceGroup,
         [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]        
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [System.String]
-        $Filter,        
+        $Filter,
         [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]        
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [System.Int32]
-        $Top,              
+        $Top,
         [Parameter(Mandatory=$true,ParameterSetName='object')]
         [Parameter(Mandatory=$true,ParameterSetName='explicit')]
         [System.String]
@@ -1201,16 +1285,18 @@ Function Get-ArmResource
         [System.String]
         $ApiVersion=$Script:DefaultArmApiVersion
     )
-    
+
     BEGIN
     {
         $AuthHeaders=@{'Authorization'="Bearer $AccessToken";Accept='application/json';}
         $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
         $QueryStr="api-version=$ApiVersion"
-        if ([String]::IsNullOrEmpty($Filter) -eq $false) {
+        if ([String]::IsNullOrEmpty($Filter) -eq $false)
+        {
             $QueryStr+="&`$filter=$Filter"
         }
-        if ($Top -gt 0) {
+        if ($Top -gt 0)
+        {
             $QueryStr+="&`$top=$Top"
         }
         $ArmUriBld.Query=$QueryStr
@@ -1219,42 +1305,30 @@ Function Get-ArmResource
     {
         if($PSCmdlet.ParameterSetName -eq 'object')
         {
-            foreach ($sub in $Subscription) {
+            foreach ($sub in $Subscription)
+            {
                 $SubscriptionId+=$sub.subscriptionId
             }
         }
-        foreach ($item in $SubscriptionId) 
+        foreach ($item in $SubscriptionId)
         {
             #Maybe they sent subscription.id not subscription.subscriptionid
             $SubId=$item.Split('/')|Select-Object -Last 1
-
             $ArmUriBld.Path="subscriptions/$SubId/resources"
-            if ([String]::IsNullOrEmpty($ResourceGroup) -eq $false) {
+            if ([String]::IsNullOrEmpty($ResourceGroup) -eq $false)
+            {
                 $ArmUriBld.Path+="/resourceGroups/$ResourceGroup"
             }
-            do
+            try
             {
-                try 
-                {
-                    $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders -ErrorAction Continue
-                    Write-Output $ArmResult.value
-                    if([String]::IsNullOrEmpty($ArmResult.nextLink) -eq $false -and ($Top -eq 0))
-                    {
-                        $nextLink=$ArmResult.nextLink
-                        Write-Verbose "Page Size $($ArmResult.value.Count) More results @ $nextLink"
-                        $ArmUriBld=New-Object System.UriBuilder($nextLink)
-                    }
-                    else {
-                        $nextLink=$null
-                    }
-                }
-                catch [System.Exception] {
-                    $nextLink=$null
-                    Write-Warning "Subscription $item - $_"
-                }
+                $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json'
+                Write-Output $ArmResult
             }
-            while ($nextLink -ne $null)          
-        }        
+            catch
+            {
+                Write-Warning "[Get-ArmResource] Subscription $item $_"
+            }
+        }
     }
     END
     {
@@ -1277,7 +1351,7 @@ Function Get-ArmResource
     .PARAMETER ApiEndpoint
         The ARM api endpoint
     .PARAMETER ApiVersion
-        The ARM api version        
+        The ARM api version
 #>
 Function Get-ArmResourceInstance
 {
@@ -1310,7 +1384,8 @@ Function Get-ArmResourceInstance
         {
             $Id=$Resource|Select-Object -ExpandProperty id
         }
-        foreach ($ResourceId in $Id) {
+        foreach ($ResourceId in $Id)
+        {
             $ArmResult=$null
             $ResourceData=$ResourceId|ConvertFrom-ArmResourceId
             #Resolve the api version
@@ -1318,19 +1393,23 @@ Function Get-ArmResourceInstance
             $ApiVersions=Get-ArmResourceTypeApiVersion -SubscriptionId $ResourceData.SubscriptionId `
                 -ResourceType $ResourceType `
                 -AccessToken $AccessToken -ApiEndpoint $ApiEndpoint
-            foreach ($ApiVersion in $ApiVersions) {
+            foreach ($ApiVersion in $ApiVersions)
+            {
                 Write-Verbose "Requesting instance $ResourceId with API version $ApiVersion"
                 $ArmUriBld.Path=$ResourceId
                 $ArmUriBld.Query="api-version=$ApiVersion"
-                try {
+                try
+                {
                     $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders -ErrorAction Stop
                     break
                 }
-                catch [System.Exception] {
-                    Write-Warning "$ResourceId using api version $ApiVersion - $_"
+                catch [System.Exception]
+                {
+                    Write-Warning "[Get-ArmResourceInstance] $ResourceId using api version $ApiVersion - $_"
                 }
             }
-            if ($ArmResult -ne $null) {
+            if ($ArmResult -ne $null)
+            {
                 Write-Output $ArmResult
             }
         }
@@ -1357,7 +1436,7 @@ Function Get-ArmResourceInstance
     .PARAMETER StartTimeOffset
         The start time offset for the usage aggregates
     .PARAMETER EndTimeOffset
-        The end time offset for the usage aggregates        
+        The end time offset for the usage aggregates
     .PARAMETER ShowDetails
         Whether to show resource instance details
     .PARAMETER AccessToken
@@ -1397,38 +1476,38 @@ Function Get-ArmUsageAggregate
         [System.DateTimeOffset]
         $EndTimeOffset,
         [Parameter(Mandatory=$false,ParameterSetName='objectOffset')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset')]                
+        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset')]
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [System.Int32]
-        $LimitResultPages,        
+        $LimitResultPages,
         [Parameter(Mandatory=$false,ParameterSetName='objectOffset')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset')]                
+        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset')]
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [ValidateSet('Daily','Hourly')]
         [System.String]
         $Granularity='Daily',
         [Parameter(Mandatory=$false,ParameterSetName='objectOffset')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset')]        
+        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset')]
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [Switch]
         $ShowDetails,
         [Parameter(Mandatory=$false,ParameterSetName='objectOffset')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset')]      
+        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset')]
         [Parameter(Mandatory=$true,ParameterSetName='object')]
         [Parameter(Mandatory=$true,ParameterSetName='explicit')]
         [System.String]
         $AccessToken,
         [Parameter(Mandatory=$false,ParameterSetName='objectOffset')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset')]        
+        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset')]
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
         [Parameter(Mandatory=$false,ParameterSetName='objectOffset')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset')]        
+        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset')]
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [System.String]
@@ -1437,21 +1516,27 @@ Function Get-ArmUsageAggregate
 
     BEGIN
     {
-        if ($PSCmdlet.ParameterSetName -in 'object','explicit') {
-            if ($Granularity -eq "Hourly") {
+        if ($PSCmdlet.ParameterSetName -in 'object','explicit')
+        {
+            if ($Granularity -eq "Hourly")
+            {
                 $StartTimeOffset=New-Object System.DateTimeOffset($StartTime.Year,$StartTime.Month,$StartTime.Day,$StartTime.Hour,0,0,0)
                 $EndTimeOffset=New-Object System.DateTimeOffset($EndTime.Year,$EndTime.Month,$EndTime.Day,$StartTime.Hour,0,0,0)
             }
-            else {
+            else
+            {
                 $StartTimeOffset=New-Object System.DateTimeOffset($StartTime.Year,$StartTime.Month,$StartTime.Day,0,0,0,0)
                 $EndTimeOffset=New-Object System.DateTimeOffset($EndTime.Year,$EndTime.Month,$EndTime.Day,0,0,0,0)
             }
         }
-        else {
-            if ($Granularity -eq "Hourly") {
+        else
+        {
+            if ($Granularity -eq "Hourly")
+            {
                 $EndTimeOffset=New-Object System.DateTimeOffset($EndTime.Year,$EndTime.Month,$EndTime.Day,$StartTime.Hour,0,0,0)
             }
-            else {
+            else
+            {
                 $EndTimeOffset=New-Object System.DateTimeOffset($EndTime.Year,$EndTime.Month,$EndTime.Day,0,0,0,0)
             }
         }
@@ -1459,57 +1544,30 @@ Function Get-ArmUsageAggregate
         $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
         $StartTimeString=[Uri]::EscapeDataString($StartTimeOffset.ToString('o'))
         $EndTimeString=[Uri]::EscapeDataString($EndTimeOffset.ToString('o'))
-        $ArmUriBld.Query="api-version=$ApiVersion&reportedStartTime=$($StartTimeString)&reportedEndTime=$($EndTimeString)" + 
+        $ArmUriBld.Query="api-version=$ApiVersion&reportedStartTime=$($StartTimeString)&reportedEndTime=$($EndTimeString)" +
             "&aggregationGranularity=$Granularity&showDetails=$($ShowDetails.IsPresent)"
     }
     PROCESS
     {
         if($PSCmdlet.ParameterSetName -eq 'object')
         {
-            foreach ($sub in $Subscription) {
+            foreach ($sub in $Subscription)
+            {
                 $SubscriptionId+=$sub.subscriptionId
             }
         }
         foreach ($item in $SubscriptionId)
         {
-            $ResultPages=0
-            $TotalItems=0
             $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Commerce/UsageAggregates"
-            do
+            try
             {
-                $ResultPages++
-                try 
-                {
-                    $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json' -ErrorAction Stop
-                    if($ArmResult.error -ne $null)
-                    {
-                        throw "There was an error code:$($ArmResult.error.code) message:$($ArmResult.error.message)"
-                    }
-                    Write-Output $ArmResult.value
-                    $TotalItems+=$ArmResult.value.Count
-                    if ($LimitResultPages -gt 0) {
-                        if ($ResultPages -lt $LimitResultPages) {
-                            $nextLink=$ArmResult.nextLink
-                        }
-                        else {
-                            $nextLink=$null
-                            Write-Verbose "Stopped iterating at $ResultPages pages. Iterated Items:$TotalItems More data available?:$([string]::IsNullOrEmpty($nextLink))"
-                        }
-                    }            
-                    else {
-                        $nextLink=$ArmResult.nextLink
-                    }
-                    if([String]::IsNullOrEmpty($nextLink) -eq $false)
-                    {
-                        Write-Verbose "Current Result Page:$ResultPages. Iterated Items:$TotalItems More results @ $nextLink"
-                        $ArmUriBld=New-Object System.UriBuilder($nextLink)
-                    }                    
-                }
-                catch [System.Exception] {
-                    Write-Warning "Subscription $item - $_"
-                    $nextLink=$null
-                }
-            } while ($nextLink -ne $null)
+                $AggregateResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $AuthHeaders -LimitResultPages $LimitResultPages
+                Write-Output $AggregateResult
+            }
+            catch
+            {
+                Write-Warning "[Get-ArmUsageAggregate] Subscription $item $_"
+            }
         }
     }
     END
@@ -1532,13 +1590,13 @@ Function Get-ArmUsageAggregate
     .PARAMETER Locale (e.g. en-US)
         The locale for the desired results
     .PARAMETER Locale (e.g. US)
-        The ISO-3166 two letter region code            
+        The ISO-3166 two letter region code
     .PARAMETER AccessToken
         The OAuth access token
     .PARAMETER ApiEndpoint
         The ARM api endpoint
     .PARAMETER ApiVersion
-        The ARM api version 
+        The ARM api version
 #>
 Function Get-ArmRateCard
 {
@@ -1554,7 +1612,7 @@ Function Get-ArmRateCard
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [System.String]
-        $OfferPrefix="MS-AZR-",        
+        $OfferPrefix="MS-AZR-",
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [System.String]
@@ -1591,26 +1649,30 @@ Function Get-ArmRateCard
 
     BEGIN
     {
-        $AuthHeaders=@{'Authorization'="Bearer $AccessToken"}
+        $AuthHeaders=@{'Authorization'="Bearer $AccessToken";'Accept'='application/json';}
         $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
-        if ($PSBoundParameters.Locale) {
-            $Locale=$PSBoundParameters.Locale    
+        if ($PSBoundParameters.Locale)
+        {
+            $Locale=$PSBoundParameters.Locale
         }
-        else {
+        else
+        {
             $Locale='en-US'
         }
-        if ($PSBoundParameters.RegionInfo) {
-            $RegionInfo=$PSBoundParameters.RegionInfo    
+        if ($PSBoundParameters.RegionInfo)
+        {
+            $RegionInfo=$PSBoundParameters.RegionInfo
         }
-        else {
+        else
+        {
             $RegionInfo='US'
         }
-        
+
         $OfferDurableId="$($OfferPrefix)$($OfferCode)"
         $DesiredCulture=$SpecificCultures|Where-Object{$_.Name -eq $Locale}|Select-Object -First 1
         $DesiredRegion=New-Object System.Globalization.RegionInfo($RegionInfo)
 
-        $ArmUriBld.Query="api-version=$ApiVersion&`$filter=OfferDurableId eq '$OfferDurableId' " + 
+        $ArmUriBld.Query="api-version=$ApiVersion&`$filter=OfferDurableId eq '$OfferDurableId' " +
             "and Currency eq '$($DesiredRegion.ISOCurrencySymbol)'" +
             "and Locale eq '$Locale' and RegionInfo eq '$RegionInfo'"
     }
@@ -1618,22 +1680,23 @@ Function Get-ArmRateCard
     {
         if($PSCmdlet.ParameterSetName -eq 'object')
         {
-            foreach ($sub in $Subscription) {
+            foreach ($sub in $Subscription)
+            {
                 $SubscriptionId+=$sub.subscriptionId
             }
         }
         foreach ($item in $SubscriptionId)
         {
-            Write-Verbose "Subscription:$item OfferDurableId:$OfferDurableId Locale:$Locale Currency:$($DesiredRegion.ISOCurrencySymbol)"
-            $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Commerce/RateCard"          
+            Write-Verbose "[Get-ArmRateCard] Subscription:$item OfferDurableId:$OfferDurableId Locale:$Locale Currency:$($DesiredRegion.ISOCurrencySymbol)"
+            $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Commerce/RateCard"
             try
             {
-                $Result=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json' -ErrorAction Continue
+                $Result=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json' -ErrorAction Stop
                 Write-Output $Result
             }
             catch [System.Exception]
-            { 
-                Write-Warning "Subscription $item - $_"
+            {
+                Write-Warning "[Get-ArmRateCard] Subscription $item - $_"
             }
         }
     }
@@ -1647,7 +1710,7 @@ Function Get-ArmResourceMetricDefinition
     (
         [Parameter(Mandatory=$true,ValueFromPipeline=$true)]
         [String[]]
-        $ResourceId,        
+        $ResourceId,
         [Parameter(Mandatory=$true)]
         [String]
         $AccessToken,
@@ -1659,7 +1722,7 @@ Function Get-ArmResourceMetricDefinition
         $ApiVersion=$Script:DefaultMonitorApiVersion,
         [Parameter(Mandatory=$false)]
         [System.String]
-        $ClassicApiVersion=$Script:ClassicMonitorApiVersion         
+        $ClassicApiVersion=$Script:ClassicMonitorApiVersion
     )
 
     BEGIN
@@ -1669,25 +1732,27 @@ Function Get-ArmResourceMetricDefinition
     }
     PROCESS
     {
-        foreach ($item in $ResourceId) 
+        foreach ($item in $ResourceId)
         {
             $ArmResource=$item|ConvertFrom-ArmResourceId
             #HACK! (Do something better)
             if($ArmResource.NameSpace -eq "Microsoft.ClassicCompute")
             {
                 $ClassicApiVersion='2014-04-01'
-            }           
-            if ($ArmResource.NameSpace -like "Microsoft.Classic*") {
+            }
+            if ($ArmResource.NameSpace -like "Microsoft.Classic*")
+            {
                 $ArmUriBld.Path="subscriptions/$($ArmResource.SubscriptionId)/resourceGroups/$($ArmResource.ResourceGroup)" + `
                     "/providers/$($ArmResource.NameSpace)/$($ArmResource.ResourceType)/$($ArmResource.Name)/metricDefinitions"
                 $ArmUriBld.Query="api-version=$ClassicApiVersion"
             }
-            else {
+            else
+            {
                 $ArmUriBld.Path="$item/providers/microsoft.insights/metricdefinitions"
                 $ArmUriBld.Query="api-version=$ApiVersion"
             }
 
-            try 
+            try
             {
                 Write-Verbose "Retrieving Metric Definitions for $item"
                 $RequestResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json' -ErrorAction Stop
@@ -1695,15 +1760,16 @@ Function Get-ArmResourceMetricDefinition
                 if ($RequestResult.GetType().FullName -eq 'System.String') {
                     $RequestResult=$RequestResult.Replace("ResourceUri","resourceUri").Replace("ResourceId","resourceId")
                     $Result=$RequestResult|ConvertFrom-Json
-                    Write-Output $Result.value                    
+                    Write-Output $Result.value
                 }
-                else {
+                else
+                {
                     Write-Output $RequestResult.value
                 }
             }
             catch [System.Exception]
-            { 
-                Write-Warning "Resource $item - $_"
+            {
+                Write-Warning "[Get-ArmResourceMetricDefinition] Resource $item - $_"
             }
 
         }
@@ -1724,7 +1790,7 @@ Function Get-ArmResourceMetric
         $ResourceId,
         [Parameter(Mandatory=$false)]
         [String]
-        $Filter,     
+        $Filter,
         [Parameter(Mandatory=$true)]
         [String]
         $AccessToken,
@@ -1746,23 +1812,24 @@ Function Get-ArmResourceMetric
     }
     PROCESS
     {
-        foreach ($item in $ResourceId) 
+        foreach ($item in $ResourceId)
         {
             $ArmResource=$item|ConvertFrom-ArmResourceId
-            if ($ArmResource.NameSpace -like "*.Classic*") {
+            if ($ArmResource.NameSpace -like "*.Classic*")
+            {
                 $ArmUriBld.Path="subscriptions/$($ArmResource.SubscriptionId)/resourceGroups/$($ArmResource.ResourceGroup)" + `
                     "/providers/$($ArmResource.NameSpace)/$($ArmResource.ResourceType)/$($ArmResource.Name)/metrics"
                 if([String]::IsNullOrEmpty($Filter))
-                {                  
+                {
                     $UtcNow=[DateTime]::UtcNow
-                    $End=New-Object System.DateTime($UtcNow.Year,$UtcNow.Month,$UtcNow.Day,$UtcNow.Hour,0,0)                           
+                    $End=New-Object System.DateTime($UtcNow.Year,$UtcNow.Month,$UtcNow.Day,$UtcNow.Hour,0,0)
                     $StartTime=(New-Object System.DateTimeOffset($End.AddHours(-1))).ToString('o')
                     $EndTime=(New-Object System.DateTimeOffset($End)).ToString('o')
                     $Filter="startTime eq $($StartTime) and endTime eq $($EndTime) and timeGrain eq duration'PT1H'"
                 }
                 $ArmUriBld.Query="api-version=$ClassicApiVersion&`$filter=$Filter"
             }
-            else 
+            else
             {
                 $ArmUriBld.Path="$item/providers/microsoft.insights/metrics"
                 if([String]::IsNullOrEmpty($Filter))
@@ -1774,24 +1841,26 @@ Function Get-ArmResourceMetric
                     $ArmUriBld.Query="api-version=$ApiVersion&`$filter=$Filter"
                 }
             }
-            try 
+            try
             {
-                Write-Verbose "Retrieving Metrics for $item"
+                Write-Verbose "[Get-ArmResourceMetric] Retrieving Metrics for $item"
                 $RequestResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json' -ErrorAction Continue
                 #HACK for malformed JSON
-                if ($RequestResult.GetType().FullName -eq 'System.String') {
+                if ($RequestResult.GetType().FullName -eq 'System.String')
+                {
                     $RequestResult=$RequestResult.Replace("ResourceUri","resourceUri").Replace("ResourceId","resourceId")
                     $Result=$RequestResult|ConvertFrom-Json
-                    Write-Output $Result                    
+                    Write-Output $Result
                 }
-                else {
+                else
+                {
                     Write-Output $RequestResult
                 }
             }
             catch [System.Exception]
-            { 
-                Write-Warning "Resource $item - $_"
-            }   
+            {
+                Write-Warning "[Get-ArmResourceMetric] Resource $item - $_"
+            }
         }
     }
     END
@@ -1807,7 +1876,7 @@ Function Get-ArmDiagnosticSetting
     (
         [Parameter(Mandatory=$true,ValueFromPipeline=$true)]
         [String[]]
-        $ResourceId,        
+        $ResourceId,
         [Parameter(Mandatory=$true)]
         [String]
         $AccessToken,
@@ -1816,7 +1885,7 @@ Function Get-ArmDiagnosticSetting
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
         [Parameter(Mandatory=$false)]
         [System.String]
-        $ApiVersion="2015-07-01"   
+        $ApiVersion="2015-07-01"
     )
 
     BEGIN
@@ -1826,20 +1895,20 @@ Function Get-ArmDiagnosticSetting
     }
     PROCESS
     {
-        foreach ($item in $ResourceId) 
+        foreach ($item in $ResourceId)
         {
             $ArmUriBld.Path="$item/providers/microsoft.insights/diagnosticSettings/service"
             $ArmUriBld.Query="api-version=$ApiVersion"
-            try 
+            try
             {
-                Write-Verbose "Retrieving Diagnostic Settings for $item"
+                Write-Verbose "[Get-ArmDiagnosticSetting] Retrieving Diagnostic Settings for $item"
                 $RequestResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json' -ErrorAction Continue
                 Write-Output $RequestResult
             }
             catch [System.Exception]
-            { 
-                Write-Warning "Resource $item - $_"
-            }   
+            {
+                Write-Warning "[Get-ArmDiagnosticSetting] Resource $item - $_"
+            }
         }
     }
     END
@@ -1863,9 +1932,9 @@ Function Get-ArmEventLog
         [Parameter(Mandatory=$false)]
         [String]
         $Filter,
-        [Parameter(Mandatory=$false)]        
+        [Parameter(Mandatory=$false)]
         [System.Int32]
-        $Top,           
+        $Top,
         [Parameter(Mandatory=$true)]
         [String]
         $AccessToken,
@@ -1881,11 +1950,12 @@ Function Get-ArmEventLog
     {
         $AuthHeaders=@{'Authorization'="Bearer $AccessToken";Accept='application/json'}
         $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
-        if ([String]::IsNullOrEmpty($Filter)) {
+        if ([String]::IsNullOrEmpty($Filter))
+        {
             $UtcNow=[DateTime]::UtcNow
-            $End=New-Object System.DateTime($UtcNow.Year,$UtcNow.Month,$UtcNow.Day,$UtcNow.Hour,0,0)                           
+            $End=New-Object System.DateTime($UtcNow.Year,$UtcNow.Month,$UtcNow.Day,$UtcNow.Hour,0,0)
             $StartTime=(New-Object System.DateTimeOffset($End.AddHours(-12))).ToString('o')
-            $EndTime=(New-Object System.DateTimeOffset($End)).ToString('o')                  
+            $EndTime=(New-Object System.DateTimeOffset($End)).ToString('o')
             #Default filter
             $Filter="eventTimestamp ge '$StartTime' and eventTimestamp le '$EndTime' and eventChannels eq 'Admin, Operation'"
         }
@@ -1893,8 +1963,9 @@ Function Get-ArmEventLog
             $ApiVersion="2014-04-01"
         }
         $QueryStr="api-version=$ApiVersion&`$filter=$Filter"
-        if ($Top -gt 0) {
-           $QueryStr+="&`$top=$Top" 
+        if ($Top -gt 0)
+        {
+           $QueryStr+="&`$top=$Top"
         }
         $ArmUriBld.Query=$QueryStr
     }
@@ -1902,7 +1973,6 @@ Function Get-ArmEventLog
     {
         foreach ($Id in $SubscriptionId)
         {
-            $TotalCount=0
             if ($DigestEvents.IsPresent)
             {
                 $ArmUriBld.Path="subscriptions/$Id/providers/microsoft.insights/eventtypes/management/digestEvents"
@@ -1911,34 +1981,20 @@ Function Get-ArmEventLog
             {
                 $ArmUriBld.Path="subscriptions/$Id/providers/microsoft.insights/eventtypes/management/values"
             }
-            do
+            try
             {
-                try 
+                if($Top -gt 0)
                 {
-                    $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders -ErrorAction Stop
-                    if($ArmResult.value -ne $null)
-                    {
-                        $TotalCount+=$ArmResult.value.Count
-                        Write-Output $ArmResult.value
-                    }
-                    if([String]::IsNullOrEmpty($ArmResult.nextLink) -eq $false -and ($Top -gt $TotalCount))
-                    {
-                        $nextLink=$ArmResult.nextLink
-                        Write-Verbose "Current Total Results:$TotalCount More results @ $nextLink"
-                        $ArmUriBld=New-Object System.UriBuilder($nextLink)
-                    }
-                    else
-                    {
-                        $nextLink=$null
-                    }
+                    #These pages are 200 entries long
+                    $ResultPages=[System.Math]::Ceiling(($Top/200))
                 }
-                catch [System.Exception]
-                {
-                    $nextLink=$null
-                    Write-Warning "Subscription $Id - $_"
-                }
+                $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json' -LimitResultPages $ResultPages
+                Write-Output $ArmResult
             }
-            while ($nextLink -ne $null)     
+            catch
+            {
+                Write-Warning "[Get-ArmEventLog] Subscription $Id $_"
+            }
         }
     }
     END
