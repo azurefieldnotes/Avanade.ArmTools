@@ -1,3 +1,5 @@
+#requires -Modules 'Microsoft.PowerShell.Utility' -Version 3.0
+
 <#
     Avanade.ArmTools
 #>
@@ -242,10 +244,7 @@ Function ConvertFrom-ArmResourceId
             Write-Output $ResourceData
         }
     }
-    END
-    {
-
-    }
+    END{}
 }
 
 #endregion
@@ -317,7 +316,8 @@ Function Get-ArmWebSite
     }
     PROCESS
     {
-        if ($PSCmdlet.ParameterSetName -in 'object','objectWithName') {
+        if ($PSCmdlet.ParameterSetName -in 'object','objectWithName')
+        {
             $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
         }
         foreach ($id in $SubscriptionId)
@@ -475,8 +475,15 @@ Function Get-ArmTenant
             $ArmUriBld=New-Object System.UriBuilder($Script:DefaultArmFrontDoor)
             $ArmUriBld.Path='tenants'
             $ArmUriBld.Query="api-version=$ApiVersion"
-            $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $Headers
-            Write-Output $ArmResult
+            try
+            {
+                $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $Headers
+                Write-Output $ArmResult
+            }
+            catch
+            {
+                Write-Warning "[Get-ArmTenant] Error retrieving tenant for current token $_"
+            }
         }
     }
     END
@@ -524,10 +531,12 @@ Function Get-ArmSubscription
     }
     $AuthHeaders=@{'Authorization'="Bearer $AccessToken";Accept='application/json';}
     $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders
-    if ([string]::IsNullOrEmpty($SubscriptionId) -eq $false) {
+    if ([string]::IsNullOrEmpty($SubscriptionId) -eq $false)
+    {
         Write-Output $ArmResult
     }
-    else {
+    else
+    {
         Write-Output $ArmResult.value
     }
 }
@@ -591,9 +600,9 @@ Function Get-ArmProvider
     {
         if ($PSCmdlet.ParameterSetName -eq 'object')
         {
-            foreach ($Sub in $Subscription)
+            if ($PSCmdlet.ParameterSetName -eq "object")
             {
-                $SubscriptionId+=$Sub.subscriptionId
+                $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
             }
         }
         foreach ($item in $SubscriptionId)
@@ -727,7 +736,8 @@ Function Get-ArmResourceType
                 }
             }
         }
-        else {
+        else
+        {
             if($PSCmdlet.ParameterSetName -eq 'object')
             {
                 foreach ($sub in $Subscription)
@@ -890,12 +900,9 @@ Function Get-ArmResourceGroup
     }
     PROCESS
     {
-        if($PSCmdlet.ParameterSetName -eq 'object')
+        if ($PSCmdlet.ParameterSetName -eq "object")
         {
-            foreach ($sub in $Subscription)
-            {
-                $SubscriptionId+=$sub.subscriptionId
-            }
+            $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
         }
         foreach ($item in $SubscriptionId)
         {
@@ -1005,12 +1012,9 @@ Function Get-ArmLocation
         }
         else
         {
-            if($PSCmdlet.ParameterSetName -eq 'object')
+            if ($PSCmdlet.ParameterSetName -eq "object")
             {
-                foreach ($sub in $Subscription)
-                {
-                    $SubscriptionId+=$sub.subscriptionId
-                }
+                $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
             }
             foreach ($item in $SubscriptionId)
             {
@@ -1107,12 +1111,9 @@ Function Get-ArmResourceLock
     }
     PROCESS
     {
-        if($PSCmdlet.ParameterSetName -eq 'object')
+        if ($PSCmdlet.ParameterSetName -eq "object")
         {
-            foreach ($sub in $Subscription)
-            {
-                $SubscriptionId+=$sub.subscriptionId
-            }
+            $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
         }
         foreach ($item in $SubscriptionId)
         {
@@ -1197,12 +1198,9 @@ Function Get-ArmFeature
     }
     PROCESS
     {
-        if($PSCmdlet.ParameterSetName -eq 'object')
+        if ($PSCmdlet.ParameterSetName -eq "object")
         {
-            foreach ($sub in $Subscription)
-            {
-                $SubscriptionId+=$sub.subscriptionId
-            }
+            $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
         }
         foreach ($item in $SubscriptionId)
         {
@@ -1303,12 +1301,9 @@ Function Get-ArmResource
     }
     PROCESS
     {
-        if($PSCmdlet.ParameterSetName -eq 'object')
+        if ($PSCmdlet.ParameterSetName -eq "object")
         {
-            foreach ($sub in $Subscription)
-            {
-                $SubscriptionId+=$sub.subscriptionId
-            }
+            $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
         }
         foreach ($item in $SubscriptionId)
         {
@@ -1549,12 +1544,9 @@ Function Get-ArmUsageAggregate
     }
     PROCESS
     {
-        if($PSCmdlet.ParameterSetName -eq 'object')
+        if ($PSCmdlet.ParameterSetName -eq "object")
         {
-            foreach ($sub in $Subscription)
-            {
-                $SubscriptionId+=$sub.subscriptionId
-            }
+            $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
         }
         foreach ($item in $SubscriptionId)
         {
@@ -1678,12 +1670,9 @@ Function Get-ArmRateCard
     }
     PROCESS
     {
-        if($PSCmdlet.ParameterSetName -eq 'object')
+        if ($PSCmdlet.ParameterSetName -eq "object")
         {
-            foreach ($sub in $Subscription)
-            {
-                $SubscriptionId+=$sub.subscriptionId
-            }
+            $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
         }
         foreach ($item in $SubscriptionId)
         {
