@@ -1839,11 +1839,11 @@ Function Get-ArmResourceMetric
                 {
                     $RequestResult=$RequestResult.Replace("ResourceUri","resourceUri").Replace("ResourceId","resourceId")
                     $Result=$RequestResult|ConvertFrom-Json
-                    Write-Output $Result
+                    Write-Output $Result|Select-Object -ExpandProperty value
                 }
                 else
                 {
-                    Write-Output $RequestResult
+                    Write-Output $RequestResult|Select-Object -ExpandProperty value
                 }
             }
             catch [System.Exception]
