@@ -622,7 +622,7 @@ Function Get-ArmProvider
                     {
                         $ArmUriBld.Query="api-version=$ApiVersion&`$expand=$ExpandFilter"
                     }
-                    $NamespaceResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json'
+                    $NamespaceResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json'
                     Write-Output $NamespaceResult
                 }
             }
