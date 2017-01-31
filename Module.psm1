@@ -1415,6 +1415,8 @@ Function Get-ArmResourceInstance
     }
 }
 
+#region Commerce
+
 <#
     .SYNOPSIS
         Retrieves the resource usage aggregates
@@ -1692,6 +1694,24 @@ Function Get-ArmRateCard
     END{}
 }
 
+#endregion
+
+#region Monitor
+
+<#
+    .SYNOPSIS
+        Retrieves the metric definition for the resource
+    .PARAMETER ResourceId
+        The desired resource id
+    .PARAMETER ClassicApiVersion
+        The ARM api version for classic resources
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+#>
 Function Get-ArmResourceMetricDefinition
 {
     [CmdletBinding()]
@@ -1769,6 +1789,22 @@ Function Get-ArmResourceMetricDefinition
     }
 }
 
+<#
+    .SYNOPSIS
+        Retrieves the metric for the resource
+    .PARAMETER ResourceId
+        The desired resource id
+    .PARAMETER Filter
+        The oauth metric filter
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+    .PARAMETER ClassicApiVersion
+        The ARM api version for classic resources
+#>
 Function Get-ArmResourceMetric
 {
     [CmdletBinding()]
@@ -1858,6 +1894,18 @@ Function Get-ArmResourceMetric
     }
 }
 
+<#
+    .SYNOPSIS
+        Retrieves the metric definition for the resource
+    .PARAMETER ResourceId
+        The desired resource id
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+#>
 Function Get-ArmDiagnosticSetting
 {
     [CmdletBinding()]
@@ -1907,6 +1955,24 @@ Function Get-ArmDiagnosticSetting
 
 }
 
+<#
+    .SYNOPSIS
+        Retrieves the event log for the subscrption
+    .PARAMETER ResourceId
+        The desired subscription id
+    .PARAMETER Filter
+        The oauth event filter
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+    .PARAMETER ClassicApiVersion
+        The ARM api version for classic resources
+    .PARAMETER DigestEvents
+        Whether to return digest events
+#>
 Function Get-ArmEventLog
 {
     [CmdletBinding()]
@@ -1991,3 +2057,5 @@ Function Get-ArmEventLog
 
     }
 }
+
+#endregion
