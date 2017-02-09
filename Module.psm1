@@ -32,6 +32,8 @@ $Script:DefaultEventLogApiVersion="2014-04-01"
 $Script:DefaultArmFrontDoor='https://management.azure.com'
 #endregion
 
+$Script:SubscriptionProviderApiVersionCache=@{}
+
 #region Helper Methods
 
 function CreateDynamicValidateSetParameter
@@ -92,6 +94,48 @@ function CreateDynamicValidateSetParameter
         $RuntimeParameter.Value=$DefaultValue
     }
     return $RuntimeParameter
+}
+
+function GetResourceTypeApiVersion
+{
+    [CmdletBinding(ConfirmImpact='None')]
+    param
+    (
+        [Parameter(Mandatory=$true)]
+        [String]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true)]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$true)]
+        [String]
+        $ResourceType
+    )
+
+    #Is the provider type cached??
+    if ($Script:SubscriptionProviderApiVersionCache.ContainsKey($SubscriptionId))
+    {
+        $SubscriptionCache=$Script:SubscriptionProviderApiVersionCache[$SubscriptionId]
+        #Is the type there?
+        if ($SubscriptionCache.ContainsKey($ResourceType))
+        {
+            $ApiVersions=$SubscriptionCache[$ResourceType]
+        }
+        else
+        {
+            $ApiVersions=Get-ArmResourceTypeApiVersion -SubscriptionId $SubscriptionId -ResourceType $ResourceType `
+                -AccessToken $AccessToken -ApiEndpoint $ApiEndpoint
+            $SubscriptionCache.Add($ResourceType,$ApiVersions)
+            $Script:SubscriptionProviderApiVersionCache[$SubscriptionId]=$SubscriptionCache
+        }
+    }
+    else
+    {
+        $ApiVersions=Get-ArmResourceTypeApiVersion -SubscriptionId $SubscriptionId -ResourceType $ResourceType `
+            -AccessToken $AccessToken -ApiEndpoint $ApiEndpoint
+        $Script:SubscriptionProviderApiVersionCache.Add($SubscriptionId,@{$ResourceType=$ApiVersions})
+    }
+    Write-Output $ApiVersions
 }
 
 function GetArmODataResult
@@ -1385,9 +1429,7 @@ Function Get-ArmResourceInstance
             $ResourceData=$ResourceId|ConvertFrom-ArmResourceId
             #Resolve the api version
             $ResourceType="$($ResourceData.Namespace)/$($ResourceData.ResourceType)"
-            $ApiVersions=Get-ArmResourceTypeApiVersion -SubscriptionId $ResourceData.SubscriptionId `
-                -ResourceType $ResourceType `
-                -AccessToken $AccessToken -ApiEndpoint $ApiEndpoint
+            $ApiVersions=GetResourceTypeApiVersion -SubscriptionId $ResourceData.SubscriptionId -AccessToken $AccessToken -ResourceType $ResourceType
             foreach ($ApiVersion in $ApiVersions)
             {
                 Write-Verbose "Requesting instance $ResourceId with API version $ApiVersion"
@@ -2059,3 +2101,74 @@ Function Get-ArmEventLog
 }
 
 #endregion
+
+<#
+    .SYNOPSIS
+        Retrieves Azure Advisor recommendations from the subscription
+    .PARAMETER Subscription
+        The subscription as an object
+    .PARAMETER SubscriptionId
+        The subscription id
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+#>
+Function Get-ArmAdvisorRecommendation
+{
+    [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='id')]
+    param
+    (
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipeline=$true)]
+        [psobject[]]
+        $Subscription,
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [System.String[]]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.String]
+        $ApiVersion="2016-05-09-preview"
+    )
+
+    BEGIN
+    {
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $ArmUriBld.Query="api-version=$ApiVersion"
+        $Headers=@{Authorization="Bearer $($AccessToken)";Accept="application/json";}
+    }
+    PROCESS
+    {
+        if ($PSCmdlet.ParameterSetName -eq 'object')
+        {
+            $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
+        }
+        foreach ($item in $SubscriptionId)
+        {
+            $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Advisor/recommendations"
+            try
+            {
+                $Recommendations=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
+                Write-Output $Recommendations
+            }
+            catch
+            {
+                Write-Warning "$item $_"
+            }
+        }
+    }
+    END
+    {
+
+    }
+}
