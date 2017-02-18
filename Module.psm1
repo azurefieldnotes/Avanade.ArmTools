@@ -4,6 +4,7 @@
     Avanade.ArmTools
 #>
 
+$Script:SubscriptionProviderApiVersionCache=@{}
 #region Constants
 $Script:Iso3166Codes=@(
     'AF','AX','AL','DZ','AS','AD','AO','AI','AQ','AG','AR','AM','AW','AU','AT','AZ','BS','BH',
@@ -31,8 +32,6 @@ $Script:ClassicMonitorApiVersion='2014-06-01'
 $Script:DefaultEventLogApiVersion="2014-04-01"
 $Script:DefaultArmFrontDoor='https://management.azure.com'
 #endregion
-
-$Script:SubscriptionProviderApiVersionCache=@{}
 
 #region Helper Methods
 
@@ -96,6 +95,10 @@ function CreateDynamicValidateSetParameter
     return $RuntimeParameter
 }
 
+<#
+    .SYNOPSIS
+        Caching helper method for speeding up api version retrieval for resources
+#>
 function GetResourceTypeApiVersion
 {
     [CmdletBinding(ConfirmImpact='None')]
@@ -138,6 +141,12 @@ function GetResourceTypeApiVersion
     Write-Output $ApiVersions
 }
 
+<#
+    .SYNOPSIS
+        Returns OData result sets from ARM
+    .REMARKS
+        Traps all exceptions so previous results are returned through output stream
+#>
 function GetArmODataResult
 {
     [CmdletBinding(ConfirmImpact='None')]
@@ -292,6 +301,63 @@ Function ConvertFrom-ArmResourceId
 }
 
 #endregion
+
+<#
+    .SYNOPSIS
+        Removes an ARM item (Resource/Resource Group)
+#>
+Function Remove-ArmItem
+{
+    [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
+    param
+    (
+        [Parameter(Mandatory=$true,ValueFromPipeline=$true,ParameterSetName='object')]
+        [System.Object[]]
+        $Resource,
+        [Parameter(Mandatory=$true,ValueFromPipeline=$true,ParameterSetName='id')]
+        [String[]]
+        $ResourceId,
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.String]
+        $ApiVersion=$Script:DefaultArmApiVersion        
+    )
+    BEGIN
+    {
+        $AuthHeaders=@{Authorization="Bearer $AccessToken"}
+    }
+    PROCESS
+    {
+        if ($PSCmdlet.ParameterSetName -eq 'object')
+        {
+            $ResourceId=$Resource|Select-Object -ExpandProperty id    
+        }
+        foreach ($item in $ResourceId)
+        {
+            Write-Verbose "[Remove-ArmItem] Deleting resource $item"
+            $UriBuilder=New-Object System.UriBuilder($ApiEndpoint)
+            $UriBuilder.Path=$item
+            $UriBuilder.Query="api-version=$ApiVersion"
+            try
+            {
+                $Result=Invoke-RestMethod -Uri $UriBuilder.Uri -Method Delete -Headers $AuthHeaders
+            }
+            catch
+            {
+                Write-Warning "[Remove-ArmItem] Failed deleting $item $_"
+            }
+        }
+    }
+    END{}
+}
 
 <#
     .SYNOPSIS
@@ -495,16 +561,16 @@ Function Get-ArmWebSitePublishingCredential
 #>
 Function Get-ArmTenant
 {
-    [CmdletBinding()]
+    [CmdletBinding(ConfirmImpact='None')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true)]
         [System.String[]]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false)]
         [System.String]
         $ApiVersion=$Script:DefaultArmApiVersion
     )
@@ -550,25 +616,28 @@ Function Get-ArmTenant
 #>
 Function Get-ArmSubscription
 {
-    [CmdletBinding(DefaultParameterSetName='explicit')]
+    [CmdletBinding(ConfirmImpact='None')]
     param
     (
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false)]
         [System.String]
         $SubscriptionId,
-        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$true)]
         [System.String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false)]
         [System.String]
-        $ApiVersion=$Script:DefaultArmApiVersion
+        $ApiVersion=$Script:DefaultArmApiVersion,
+        [Parameter(Mandatory=$false)]
+        [Switch]
+        $IncludeDetails
     )
 
     $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
-    $ArmUriBld.Query="api-version=$ApiVersion"
+    $ArmUriBld.Query="api-version=$ApiVersion&includeDetails=$($IncludeDetails.IsPresent)"
     $ArmUriBld.Path='subscriptions'
     if ([string]::IsNullOrEmpty($SubscriptionId) -eq $false) {
         $ArmUriBld.Path+="/$SubscriptionId"
@@ -582,6 +651,160 @@ Function Get-ArmSubscription
     else
     {
         Write-Output $ArmResult.value
+    }
+}
+
+<#
+    .SYNOPSIS
+        Registers the specified provider with the subscription(s)
+    .PARAMETER Subscription
+        The subscription as an object
+    .PARAMETER SubscriptionId
+        The subscription id
+    .PARAMETER Namespace
+        The provider namespace to be registered
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+#>
+Function Register-ArmProvider
+{
+    [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
+    param
+    (
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipeline=$true)]
+        [psobject[]]
+        $Subscription,
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [System.String[]]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $Namespace,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.String]
+        $ApiVersion="2016-09-01"
+    )
+
+    BEGIN
+    {
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $ArmUriBld.Query="api-version=$ApiVersion"
+        $Headers=@{Authorization="Bearer $($AccessToken)";Accept="application/json";}
+    }
+    PROCESS
+    {
+        if ($PSCmdlet.ParameterSetName -eq 'object')
+        {
+            $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
+        }
+        foreach ($item in $SubscriptionId)
+        {
+            $ArmUriBld.Path="subscriptions/$item/providers/$Namespace/register"
+            try
+            {
+                $Result=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $Headers -Method Post -ErrorAction Stop
+                Write-Output $Result
+            }
+            catch
+            {
+                Write-Warning "$item $_"
+            }            
+        }
+    }
+    END
+    {
+
+    }
+}
+
+<#
+    .SYNOPSIS
+        Unregisters the specified provider with the subscription(s)
+    .PARAMETER Subscription
+        The subscription as an object
+    .PARAMETER SubscriptionId
+        The subscription id
+    .PARAMETER Namespace
+        The provider namespace to be unregistered
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+#>
+Function Unregister-ArmProvider
+{
+    [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
+    param
+    (
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipeline=$true)]
+        [psobject[]]
+        $Subscription,
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [System.String[]]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $Namespace,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.String]
+        $ApiVersion="2016-09-01"
+    )
+
+    BEGIN
+    {
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $ArmUriBld.Query="api-version=$ApiVersion"
+        $Headers=@{Authorization="Bearer $($AccessToken)";Accept="application/json";}
+    }
+    PROCESS
+    {
+        if ($PSCmdlet.ParameterSetName -eq 'object')
+        {
+            $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
+        }
+        foreach ($item in $SubscriptionId)
+        {
+            $ArmUriBld.Path="subscriptions/$item/providers/$Namespace/unregister"
+            try
+            {
+                $Result=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $Headers -Method Post -ErrorAction Stop
+                Write-Output $Result
+            }
+            catch
+            {
+                Write-Warning "$item $_"
+            }            
+        }
+    }
+    END
+    {
+
     }
 }
 
@@ -603,7 +826,7 @@ Function Get-ArmSubscription
 #>
 Function Get-ArmProvider
 {
-    [CmdletBinding(DefaultParameterSetName='explicit')]
+    [CmdletBinding(DefaultParameterSetName='object')]
     param
     (
         [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipeline=$true)]
@@ -702,7 +925,7 @@ Function Get-ArmProvider
 #>
 Function Get-ArmResourceType
 {
-    [CmdletBinding(DefaultParameterSetName='idNamespace')]
+    [CmdletBinding(DefaultParameterSetName='objectNamespace')]
     param
     (
         [Parameter(Mandatory=$false,ParameterSetName='idType',ValueFromPipeline=$true)]
@@ -791,28 +1014,35 @@ Function Get-ArmResourceType
             }
             foreach ($item in $SubscriptionId)
             {
-                if($PSCmdlet.ParameterSetName -in 'objectType','idType')
+                try
                 {
-                    $ArmUriBld.Path="subscriptions/$item/providers/$Namespace"
-                    $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders
-                    $ResProvType=$ArmResult.resourceTypes|Where-Object{$_.resourceType -eq $TypeName }|Select-Object -First 1
-                    if ($ResProvType -ne $null)
+                    if($PSCmdlet.ParameterSetName -in 'objectType','idType')
                     {
-                        Write-Output $ResProvType
+                        $ArmUriBld.Path="subscriptions/$item/providers/$Namespace"
+                        $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders
+                        $ResProvType=$ArmResult.resourceTypes|Where-Object{$_.resourceType -eq $TypeName }|Select-Object -First 1
+                        if ($ResProvType -ne $null)
+                        {
+                            Write-Output $ResProvType
+                        }
+                        else
+                        {
+                            Write-Warning "[Get-ArmResourceType] $ResourceType was not found in subscription:$item"
+                        }
                     }
                     else
                     {
-                        Write-Warning "[Get-ArmResourceType] $ResourceType was not found in subscription:$item"
+                        $ArmUriBld.Path="subscriptions/$item/providers/$Namespace"
+                        $Providers=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders
+                        foreach ($Provider in $Providers)
+                        {
+                            Write-Output $Provider.resourceTypes
+                        }
                     }
                 }
-                else
+                catch
                 {
-                    $ArmUriBld.Path="subscriptions/$item/providers/$Namespace"
-                    $Providers=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders
-                    foreach ($Provider in $Providers)
-                    {
-                        Write-Output $Provider.resourceTypes
-                    }
+                    Write-Warning "[Get-ArmResourceType] $item $ResourceType $_"
                 }
             }
         }
@@ -841,7 +1071,7 @@ Function Get-ArmResourceType
 #>
 Function Get-ArmResourceTypeApiVersion
 {
-    [CmdletBinding(DefaultParameterSetName='explicit')]
+    [CmdletBinding(DefaultParameterSetName='object')]
     param
     (
         [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipeline=$true)]
@@ -893,6 +1123,74 @@ Function Get-ArmResourceTypeApiVersion
 
 <#
     .SYNOPSIS
+        Retrieves the Azure resource provider locations
+    .PARAMETER SubscriptionId
+        The azure subscription id(s)
+    .PARAMETER Subscription
+        The azure subscription(s)
+    .PARAMETER ResourceType
+        The fully qualified type name
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+#>
+Function Get-ArmResourceTypeLocation
+{
+    [CmdletBinding(DefaultParameterSetName='object')]
+    param
+    (
+        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipeline=$true)]
+        [System.String[]]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [System.Object[]]
+        $Subscription,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
+        [System.String]
+        $ResourceType,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
+        [System.String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.String]
+        $ApiVersion=$Script:DefaultArmApiVersion
+    )
+
+    BEGIN
+    {
+
+    }
+    PROCESS
+    {
+        if ($PSCmdlet.ParameterSetName -eq "object")
+        {
+            $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
+        }
+        foreach ($item in $SubscriptionId)
+        {
+            $ArmResourceType=Get-ArmResourceType -SubscriptionId $SubscriptionId -AccessToken $AccessToken `
+                -ResourceType $ResourceType -ApiEndpoint $ApiEndpoint -ApiVersion $ApiVersion
+            Write-Output $ArmResourceType.locations
+        }
+    }
+    END
+    {
+
+    }
+}
+
+<#
+    .SYNOPSIS
         Retrieves the Azure resource groups
     .PARAMETER SubscriptionId
         The azure subscription id(s)
@@ -909,7 +1207,7 @@ Function Get-ArmResourceTypeApiVersion
 #>
 Function Get-ArmResourceGroup
 {
-    [CmdletBinding(DefaultParameterSetName='explicit')]
+    [CmdletBinding(DefaultParameterSetName='object')]
     param
     (
         [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipeline=$true)]
@@ -998,7 +1296,7 @@ Function Get-ArmResourceGroup
 #>
 Function Get-ArmLocation
 {
-    [CmdletBinding(DefaultParameterSetName='explicit')]
+    [CmdletBinding(DefaultParameterSetName='object')]
     param
     (
         [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipeline=$true)]
@@ -1112,7 +1410,7 @@ Function Get-ArmLocation
 #>
 Function Get-ArmResourceLock
 {
-    [CmdletBinding(DefaultParameterSetName='explicit')]
+    [CmdletBinding(DefaultParameterSetName='object')]
     param
     (
         [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipeline=$true)]
@@ -1191,88 +1489,6 @@ Function Get-ArmResourceLock
 
 <#
     .SYNOPSIS
-        Retrieves the provider feature registrations
-    .PARAMETER SubscriptionId
-        The azure subscription id(s)
-    .PARAMETER Subscription
-        The azure subscription(s)
-    .PARAMETER Namespace
-        The provider namespace
-    .PARAMETER AccessToken
-        The OAuth access token
-    .PARAMETER ApiEndpoint
-        The ARM api endpoint
-    .PARAMETER ApiVersion
-        The ARM api version
-#>
-Function Get-ArmFeature
-{
-    [CmdletBinding(DefaultParameterSetName='explicit')]
-    param
-    (
-        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipeline=$true)]
-        [System.String[]]
-        $SubscriptionId,
-        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
-        [System.Object[]]
-        $Subscription,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
-        [System.String]
-        $Namespace,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
-        [System.String]
-        $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
-        [System.Uri]
-        $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
-        [System.String]
-        $ApiVersion='2015-12-01'
-    )
-
-    BEGIN
-    {
-        $AuthHeaders=@{'Authorization'="Bearer $AccessToken";Accept='application/json'}
-        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
-        $ArmUriBld.Query="api-version=$ApiVersion"
-    }
-    PROCESS
-    {
-        if ($PSCmdlet.ParameterSetName -eq "object")
-        {
-            $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
-        }
-        foreach ($item in $SubscriptionId)
-        {
-            $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Features/features"
-            if([String]::IsNullOrEmpty($Namespace) -eq $false)
-            {
-                $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Features/providers/$Namespace/features"
-            }
-            try
-            {
-                $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json'
-                Write-Output $ArmResult
-            }
-            catch
-            {
-                Write-Warning "[Get-ArmFeature] Subscription $item - $_"
-            }
-        }
-    }
-    END
-    {
-
-    }
-
-}
-
-<#
-    .SYNOPSIS
         Retrieves abstract resource instance(s)
     .PARAMETER SubscriptionId
         The azure subscription id(s)
@@ -1293,7 +1509,7 @@ Function Get-ArmFeature
 #>
 Function Get-ArmResource
 {
-    [CmdletBinding(DefaultParameterSetName='explicit')]
+    [CmdletBinding(DefaultParameterSetName='object')]
     param
     (
         [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipeline=$true)]
@@ -1379,9 +1595,7 @@ Function Get-ArmResource
 <#
     .SYNOPSIS
         Retrieves detailed resource instance(s)
-    .PARAMETER SubscriptionId
-        The azure subscription id(s)
-    .PARAMETER Subscription
+    .PARAMETER Resource
         The azure subscription(s)
     .PARAMETER Id
         The resource id to retrieve
@@ -1389,12 +1603,10 @@ Function Get-ArmResource
         The OAuth access token
     .PARAMETER ApiEndpoint
         The ARM api endpoint
-    .PARAMETER ApiVersion
-        The ARM api version
 #>
 Function Get-ArmResourceInstance
 {
-    [CmdletBinding(DefaultParameterSetName='id')]
+    [CmdletBinding(DefaultParameterSetName='object')]
     param
     (
         [Parameter(Mandatory=$true,ValueFromPipeline=$true,ParameterSetName='id')]
@@ -1487,7 +1699,7 @@ Function Get-ArmResourceInstance
 #>
 Function Get-ArmUsageAggregate
 {
-    [CmdletBinding(DefaultParameterSetName='explicit')]
+    [CmdletBinding(DefaultParameterSetName='object')]
     param
     (
         [Parameter(Mandatory=$false,ParameterSetName='explicitOffset')]
@@ -1636,7 +1848,7 @@ Function Get-ArmUsageAggregate
 #>
 Function Get-ArmRateCard
 {
-    [CmdletBinding(DefaultParameterSetName='explicit')]
+    [CmdletBinding(DefaultParameterSetName='object')]
     param
     (
         [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipeline=$true)]
@@ -2020,7 +2232,7 @@ Function Get-ArmEventLog
     [CmdletBinding()]
     param
     (
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$true,ValueFromPipeline=$true)]
         [System.String[]]
         $SubscriptionId,
         [Parameter(Mandatory=$false)]
@@ -2118,7 +2330,7 @@ Function Get-ArmEventLog
 #>
 Function Get-ArmAdvisorRecommendation
 {
-    [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='id')]
+    [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
     param
     (
         [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipeline=$true)]
@@ -2165,6 +2377,776 @@ Function Get-ArmAdvisorRecommendation
             {
                 Write-Warning "$item $_"
             }
+        }
+    }
+    END
+    {
+
+    }
+}
+
+<#
+    .SYNOPSIS
+        Retrieves the role assignments for a given subscription
+    .PARAMETER Subscription
+        The subscription as an object
+    .PARAMETER SubscriptionId
+        The subscription id
+    .PARAMETER RoleName
+        The role name   
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+#>
+Function Get-ArmRoleAssignment
+{
+    [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
+    param
+    (
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipeline=$true)]
+        [psobject[]]
+        $Subscription,
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [System.String[]]
+        $SubscriptionId,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [String]
+        $RoleName,        
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.String]
+        $ApiVersion="2016-07-01"
+    )
+
+    BEGIN
+    {
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $ArmUriBld.Query="api-version=$ApiVersion"
+        $Headers=@{Authorization="Bearer $($AccessToken)";Accept="application/json";}
+    }
+    PROCESS
+    {
+        if ($PSCmdlet.ParameterSetName -eq 'object')
+        {
+            $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
+        }
+        foreach ($item in $SubscriptionId)
+        {
+            try
+            {
+                if ([String]::IsNullOrEmpty($RoleName) -eq $false) {
+                    $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/roleAssignments/$RoleName"
+                    $Result=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Method Get -Headers $Headers -ErrorAction Stop
+                }
+                else {
+                    $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/roleAssignments"
+                    $Result=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
+                }
+                
+                Write-Output $Result
+            }
+            catch
+            {
+                Write-Warning "$item $_"
+            }
+        }        
+    }
+    END
+    {
+
+    }
+}
+
+<#
+    .SYNOPSIS
+        Retrieves the role definitions for a given subscription
+    .PARAMETER Subscription
+        The subscription as an object
+    .PARAMETER SubscriptionId
+        The subscription id
+    .PARAMETER DefinitionName
+        The role definition name
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+#>
+Function Get-ArmRoleDefinition
+{
+    [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
+    param
+    (
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipeline=$true)]
+        [psobject[]]
+        $Subscription,
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [System.String[]]
+        $SubscriptionId,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [String]
+        $DefinitionName,        
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.String]
+        $ApiVersion="2016-07-01"
+    )
+
+    BEGIN
+    {
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $ArmUriBld.Query="api-version=$ApiVersion"
+        $Headers=@{Authorization="Bearer $($AccessToken)";Accept="application/json";}
+    }
+    PROCESS
+    {
+        if ($PSCmdlet.ParameterSetName -eq 'object')
+        {
+            $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
+        }
+        foreach ($item in $SubscriptionId)
+        {
+            try
+            {
+                if ([String]::IsNullOrEmpty($RoleName) -eq $false) {
+                    $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/roleDefinitions/$DefinitionName"
+                    $Result=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Method Get -Headers $Headers -ErrorAction Stop
+                }
+                else {
+                    $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/roleDefinitions"
+                    $Result=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
+                }
+                
+                Write-Output $Result
+            }
+            catch
+            {
+                Write-Warning "$item $_"
+            }
+        }        
+    }
+    END
+    {
+
+    }
+}
+
+<#
+    .SYNOPSIS
+        Retrieves the policy definitions for a given subscription
+    .PARAMETER Subscription
+        The subscription as an object
+    .PARAMETER DefinitionName
+        The policy definition name        
+    .PARAMETER SubscriptionId
+        The subscription id
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+#>
+Function Get-ArmPolicyDefinition
+{
+    [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
+    param
+    (
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipeline=$true)]
+        [psobject[]]
+        $Subscription,
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [System.String[]]
+        $SubscriptionId,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [String]
+        $DefinitionName,        
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.String]
+        $ApiVersion="2016-12-01"
+    )
+
+    BEGIN
+    {
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $ArmUriBld.Query="api-version=$ApiVersion"
+        $Headers=@{Authorization="Bearer $($AccessToken)";Accept="application/json";}
+    }
+    PROCESS
+    {
+        if ($PSCmdlet.ParameterSetName -eq 'object')
+        {
+            $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
+        }
+        foreach ($item in $SubscriptionId)
+        {
+            try
+            {
+                
+                if ([string]::IsNullOrEmpty($DefinitionName) -eq $false) {
+                    $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/policydefinitions/$DefinitionName"
+                    $Result=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Method Get -Headers $Headers -ErrorAction Stop
+                }
+                else {
+                    $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/policydefinitions"
+                    $Result=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
+                }
+                Write-Output $Result
+            }
+            catch
+            {
+                Write-Warning "$item $_"
+            }
+        }        
+    }
+    END
+    {
+
+    }
+}
+
+<#
+    .SYNOPSIS
+        Retrieves the policy assignments for a given subscription
+    .PARAMETER Subscription
+        The subscription as an object
+    .PARAMETER SubscriptionId
+        The subscription id
+    .PARAMETER AssignmentName
+        The policy assignment name        
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+#>
+Function Get-ArmPolicyAssignment
+{
+    [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
+    param
+    (
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipeline=$true)]
+        [psobject[]]
+        $Subscription,
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [System.String[]]
+        $SubscriptionId,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [String]
+        $AssignmentName,       
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.String]
+        $ApiVersion="2016-12-01"
+    )
+
+    BEGIN
+    {
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $ArmUriBld.Query="api-version=$ApiVersion"
+        $Headers=@{Authorization="Bearer $($AccessToken)";Accept="application/json";}
+    }
+    PROCESS
+    {
+        if ($PSCmdlet.ParameterSetName -eq 'object')
+        {
+            $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
+        }
+        foreach ($item in $SubscriptionId)
+        {
+            try
+            {
+                
+                if ([string]::IsNullOrEmpty($AssignmentName) -eq $false) {
+                    $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/policyassignments/$AssignmentName"
+                    $Result=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Method Get -Headers $Headers -ErrorAction Stop
+                }
+                else {
+                    $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/policyassignments"
+                    $Result=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
+                }
+                Write-Output $Result
+            }
+            catch
+            {
+                Write-Warning "$item $_"
+            }
+        }        
+    }
+    END
+    {
+
+    }
+}
+
+<#
+    .SYNOPSIS
+        Retrieves the compute quota statistics for a subscription
+    .PARAMETER Subscription
+        The subscription as an object
+    .PARAMETER SubscriptionId
+        The subscription id
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+#>
+Function Get-ArmComputeUsage
+{
+    [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
+    param
+    (
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipeline=$true)]
+        [psobject[]]
+        $Subscription,
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [System.String[]]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $Location,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.String]
+        $ApiVersion="2017-03-30"
+    )
+
+    BEGIN
+    {
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $ArmUriBld.Query="api-version=$ApiVersion"
+        $Headers=@{Authorization="Bearer $($AccessToken)";Accept="application/json";}
+    }
+    PROCESS
+    {
+        if ($PSCmdlet.ParameterSetName -eq 'object')
+        {
+            $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
+        }
+        foreach ($item in $SubscriptionId)
+        {
+            $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Compute/locations/$Location/usages"
+            try
+            {
+                $Usages=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
+                Write-Output $Usages
+            }
+            catch
+            {
+                Write-Warning "$item $_"
+            }            
+        }
+
+    }
+    END
+    {
+
+    }    
+}
+
+<#
+    .SYNOPSIS
+        Retrieves the storage quota statistics for a subscription
+    .PARAMETER Subscription
+        The subscription as an object
+    .PARAMETER SubscriptionId
+        The subscription id
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+#>
+Function Get-ArmStorageUsage
+{
+    [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
+    param
+    (
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipeline=$true)]
+        [psobject[]]
+        $Subscription,
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [System.String[]]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.String]
+        $ApiVersion="2016-12-01"
+    )
+
+    BEGIN
+    {
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $ArmUriBld.Query="api-version=$ApiVersion"
+        $Headers=@{Authorization="Bearer $($AccessToken)";Accept="application/json";}
+    }
+    PROCESS
+    {
+        if ($PSCmdlet.ParameterSetName -eq 'object')
+        {
+            $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
+        }
+        foreach ($item in $SubscriptionId)
+        {
+            $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Storage/usages"
+            try
+            {
+                $Usages=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
+                Write-Output $Usages
+            }
+            catch
+            {
+                Write-Warning "$item $_"
+            }            
+        }
+    }
+    END
+    {
+
+    }    
+}
+
+<#
+    .SYNOPSIS
+        Retrieves usage statistics over the specified period for a given resource
+        This is very haphazardly implemented in ARM
+    .PARAMETER ResourceId
+        The resource id(s) to retrieve usage for
+    .PARAMETER Filter
+        An OData filter to query
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+#>
+Function Get-ArmResourceUsage
+{
+    [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='offset')]
+    param
+    (
+        [Parameter(Mandatory=$true,ParameterSetName='default',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='filter',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='datetime',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='offset',ValueFromPipeline=$true)]
+        [System.String[]]
+        $ResourceId,
+        [Parameter(Mandatory=$true,ParameterSetName='filter')]
+        [String]
+        $Filter,
+        [Parameter(Mandatory=$true,ParameterSetName='filter')]
+        [Parameter(Mandatory=$true,ParameterSetName='datetime')]
+        [Parameter(Mandatory=$true,ParameterSetName='offset')]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$true,ParameterSetName='datetime')]
+        [System.DateTime]
+        $UsageStart,
+        [Parameter(Mandatory=$true,ParameterSetName='datetime')]
+        [System.DateTime]
+        $UsageEnd,
+        [Parameter(Mandatory=$true,ParameterSetName='offset')]
+        [System.DateTimeOffset]
+        $UsageStartOffset,
+        [Parameter(Mandatory=$true,ParameterSetName='offset')]
+        [System.DateTimeOffset]
+        $UsageEndOffset,
+        [Parameter(Mandatory=$false,ParameterSetName='default')]
+        [Switch]
+        $GetDefault,
+        [Parameter(Mandatory=$false,ParameterSetName='default')]
+        [Parameter(Mandatory=$false,ParameterSetName='filter')]
+        [Parameter(Mandatory=$false,ParameterSetName='datetime')]
+        [Parameter(Mandatory=$false,ParameterSetName='offset')]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor
+    )
+
+    BEGIN
+    {
+        if ($PSCmdlet.ParameterSetName -eq 'datetime') {
+            $UsageStartOffset=New-Object System.DateTimeOffset($UsageStart)
+            $UsageEndOffset=New-Object System.DateTimeOffset($UsageEnd)
+        }
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $Headers=@{Authorization="Bearer $($AccessToken)";Accept="application/json";}
+    }
+    PROCESS
+    {
+        foreach ($item in $ResourceId)
+        {
+            $ResourceData=$item|ConvertFrom-ArmResourceId
+            $ArmUriBld.Path="$item/usages"
+            #Resolve the api version
+            $ResourceType="$($ResourceData.Namespace)/$($ResourceData.ResourceType)"
+            $ApiVersions=GetResourceTypeApiVersion -SubscriptionId $ResourceData.SubscriptionId -AccessToken $AccessToken -ResourceType $ResourceType
+            foreach ($ApiVersion in $ApiVersions)
+            {
+                Write-Verbose "Requesting instance $ResourceId with API version $ApiVersion"
+                if($PSCmdlet.ParameterSetName -ne 'filter')
+                {
+                    $Filter="startTime eq $($UsageStartOffset.ToString('o')) and endTime eq $($UsageEndOffset.ToString('o'))"
+                }
+                if($PSCmdlet.ParameterSetName -eq 'GetDefault')
+                {
+                    $ArmUriBld.Query="api-version=$ApiVersion"
+                }
+                else
+                {
+                    $ArmUriBld.Query="api-version=$ApiVersion&`$filter=$Filter"
+                }
+                try
+                {
+                    $Usages=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
+                    if($Usages -ne $null)
+                    {
+                        Write-Output $Usages
+                        break
+                    }
+                }
+                catch [System.Exception]
+                {
+                    Write-Warning "[Get-ArmResourceUsage] $ResourceId using api version $ApiVersion - $_"
+                }
+            }        
+        }
+
+    }
+    END
+    {
+
+    }    
+}
+
+<#
+    .SYNOPSIS
+        Retrieves the provider feature registrations
+    .PARAMETER SubscriptionId
+        The azure subscription id(s)
+    .PARAMETER Subscription
+        The azure subscription(s)
+    .PARAMETER Namespace
+        The provider namespace
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+#>
+Function Get-ArmFeature
+{
+    [CmdletBinding(DefaultParameterSetName='object')]
+    param
+    (
+        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipeline=$true)]
+        [System.String[]]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [System.Object[]]
+        $Subscription,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.String]
+        $Namespace,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.String]
+        $FeatureName,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
+        [System.String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.String]
+        $ApiVersion='2015-12-01'
+    )
+
+    BEGIN
+    {
+        $AuthHeaders=@{'Authorization'="Bearer $AccessToken";Accept='application/json'}
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $ArmUriBld.Query="api-version=$ApiVersion"
+    }
+    PROCESS
+    {
+        if ($PSCmdlet.ParameterSetName -eq "object")
+        {
+            $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
+        }
+        foreach ($item in $SubscriptionId)
+        {
+            try
+            {
+                $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Features/features"
+                if([String]::IsNullOrEmpty($Namespace) -eq $false)
+                {
+                    $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Features/providers/$Namespace/features"
+                }
+                if ([string]::IsNullOrEmpty($FeatureName) -eq $false)
+                {
+                    $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Features/providers/$Namespace/features/$FeatureName"
+                    $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json' -ErrorAction Stop
+                }
+                else
+                {
+                    $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json'
+                }
+                
+                Write-Output $ArmResult
+            }
+            catch
+            {
+                Write-Warning "[Get-ArmFeature] Subscription $item - $_"
+            }
+        }
+    }
+    END
+    {
+    }
+}
+
+<#
+    .SYNOPSIS
+        Registers the specified preview feature on the subscription(s)
+    .PARAMETER SubscriptionId
+        The azure subscription id(s)
+    .PARAMETER Subscription
+        The azure subscription(s)
+    .PARAMETER Namespace
+        The provider namespace
+    .PARAMETER FeatureName
+        The preview feature name
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version        
+#>
+Function Register-ArmFeature
+{
+    [CmdletBinding(DefaultParameterSetName='object')]
+    param
+    (
+        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipeline=$true)]
+        [System.String[]]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [System.Object[]]
+        $Subscription,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
+        [System.String]
+        $Namespace,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
+        [System.String]
+        $FeatureName,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
+        [System.String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.String]
+        $ApiVersion='2015-12-01'
+    )
+
+    BEGIN
+    {
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $ArmUriBld.Query="api-version=$ApiVersion"
+        $Headers=@{Authorization="Bearer $($AccessToken)";Accept="application/json";}
+    }
+    PROCESS
+    {
+        if ($PSCmdlet.ParameterSetName -eq 'object')
+        {
+            $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
+        }
+        foreach ($item in $SubscriptionId)
+        {
+            $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Features/providers/$Namespace/features/$FeatureName/register"
+            try
+            {
+                $Result=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $Headers -Method Post -ErrorAction Stop
+                Write-Output $Result
+            }
+            catch
+            {
+                Write-Warning "$item $_"
+            }            
         }
     }
     END
