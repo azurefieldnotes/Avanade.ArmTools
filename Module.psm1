@@ -2786,7 +2786,7 @@ Function Get-ArmComputeUsage
             }
             catch
             {
-                Write-Warning "$item $_"
+                Write-Warning "[Get-ArmComputeUsage] $ApiEndpoint $item $_"
             }            
         }
 
@@ -2858,7 +2858,7 @@ Function Get-ArmStorageUsage
             }
             catch
             {
-                Write-Warning "$item $_"
+                Write-Warning "[Get-ArmStorageUsage] $ApiVersion $item $_"
             }            
         }
     }
@@ -3145,7 +3145,7 @@ Function Register-ArmFeature
             }
             catch
             {
-                Write-Warning "$item $_"
+                Write-Warning "[Register-ArmFeature] $ApiVersion $item $_"
             }            
         }
     }
@@ -3153,4 +3153,159 @@ Function Register-ArmFeature
     {
 
     }
+}
+
+<#
+    .SYNOPSIS
+        Retrieves the available vm sizes for a subscription and location
+    .PARAMETER Subscription
+        The subscription as an object
+    .PARAMETER SubscriptionId
+        The subscription id
+    .PARAMETER Location
+        The location to query
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+#>
+Function Get-ArmVmSize
+{
+    [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
+    param
+    (
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipeline=$true)]
+        [psobject[]]
+        $Subscription,
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [System.String[]]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $Location,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.String]
+        $ApiVersion="2017-03-30"
+    )
+
+    BEGIN
+    {
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $ArmUriBld.Query="api-version=$ApiVersion"
+        $Headers=@{Authorization="Bearer $($AccessToken)";Accept="application/json";}
+    }
+    PROCESS
+    {
+        if ($PSCmdlet.ParameterSetName -eq 'object')
+        {
+            $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
+        }
+        foreach ($item in $SubscriptionId)
+        {
+            $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Compute/locations/$Location/vmSizes"
+            try
+            {
+                $VmSizes=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
+                Write-Output $VmSizes
+            }
+            catch
+            {
+                Write-Warning "[Get-ArmVmSize] $item $ApiVersion $_"
+            }            
+        }
+    }
+    END
+    {
+
+    }
+}
+
+<#
+    .SYNOPSIS
+        Retrieves the tag name report for the subscription
+    .PARAMETER Subscription
+        The subscription as an object
+    .PARAMETER SubscriptionId
+        The subscription id
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+#>
+Function Get-ArmTagName
+{
+    [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
+    param
+    (
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipeline=$true)]
+        [psobject[]]
+        $Subscription,
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [System.String[]]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.String]
+        $ApiVersion="2016-09-01",
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Switch]
+        $ExpandTagValues
+    )
+
+    BEGIN
+    {
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $ArmUriBld.Query="api-version=$ApiVersion"
+        $Headers=@{Authorization="Bearer $($AccessToken)";Accept="application/json";}
+    }
+    PROCESS
+    {
+        if ($PSCmdlet.ParameterSetName -eq 'object')
+        {
+            $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
+        }
+        foreach ($item in $SubscriptionId)
+        {
+            $ArmUriBld.Path="subscriptions/$item/tagnames"
+            if ($ExpandTagValues.IsPresent) {
+                $ArmUriBld.Query="`$expand=tagvalues&api-version=$ApiVersion"
+            }
+            try
+            {
+                $ArmTags=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
+                Write-Output $ArmTags
+            }
+            catch
+            {
+                Write-Warning "[Get-ArmVmSize] $item $ApiVersion $_"
+            }            
+        }
+    }
+    END
+    {
+
+    }    
 }
