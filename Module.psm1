@@ -197,10 +197,37 @@ function GetArmODataResult
                 {
                     $RequestValue=$null
                 }
-                $TotalItems+=$RequestValue.Count
-                if ($LimitResultPages -gt 0)
+                if($RequestValue -ne $null)
                 {
-                    if ($ResultPages -lt $LimitResultPages)
+                    if($RequestValue -is [array])
+                    {
+                        $TotalItems+=$RequestValue.Count
+                    }
+                    else
+                    {
+                        $TotalItems++
+                    }
+                    if ($LimitResultPages -gt 0)
+                    {
+                        if ($ResultPages -lt $LimitResultPages)
+                        {
+                            if($ArmResult.PSobject.Properties.name -match $NextLinkProperty)
+                            {
+                                $Uri=$ArmResult|Select-Object -ExpandProperty $NextLinkProperty
+                                Write-Verbose "[GetArmODataResult] Total Items:$TotalItems. More items available @ $Uri"
+                            }
+                            else
+                            {
+                                $Uri=$null
+                            }
+                        }
+                        else
+                        {
+                            $Uri=$null
+                            Write-Verbose "[GetArmODataResult] Stopped iterating at $ResultPages pages. Iterated Items:$TotalItems More data available?:$([string]::IsNullOrEmpty($ArmResult.value))"
+                        }
+                    }
+                    else
                     {
                         if($ArmResult.PSobject.Properties.name -match $NextLinkProperty)
                         {
@@ -212,25 +239,12 @@ function GetArmODataResult
                             $Uri=$null
                         }
                     }
-                    else
-                    {
-                        $Uri=$null
-                        Write-Verbose "[GetArmODataResult] Stopped iterating at $ResultPages pages. Iterated Items:$TotalItems More data available?:$([string]::IsNullOrEmpty($ArmResult.value))"
-                    }
+                    Write-Output $RequestValue
                 }
                 else
                 {
-                    if($ArmResult.PSobject.Properties.name -match $NextLinkProperty)
-                    {
-                        $Uri=$ArmResult|Select-Object -ExpandProperty $NextLinkProperty
-                        Write-Verbose "[GetArmODataResult] Total Items:$TotalItems. More items available @ $Uri"
-                    }
-                    else
-                    {
-                        $Uri=$null
-                    }
+                    $Uri=$null
                 }
-                Write-Output $RequestValue
             }
             else
             {
@@ -3296,7 +3310,10 @@ Function Get-ArmTagName
             try
             {
                 $ArmTags=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
-                Write-Output $ArmTags
+                if($ArmTags -ne $null)
+                {
+                    Write-Output $ArmTags
+                }
             }
             catch
             {
