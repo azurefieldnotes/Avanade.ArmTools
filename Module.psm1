@@ -2995,6 +2995,87 @@ Function Get-ArmResourceUsage
 
 <#
     .SYNOPSIS
+        Retrieves the quota statistics for a subscription
+    .PARAMETER Subscription
+        The subscription as an object
+    .PARAMETER SubscriptionId
+        The subscription id
+    .PARAMETER Namespace
+        The provider namespace
+    .PARAMETER Location
+        The provider location
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+#>
+Function Get-ArmQuotaUsage
+{
+    [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
+    param
+    (
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipeline=$true)]
+        [psobject[]]
+        $Subscription,
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [System.String[]]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $Namespace,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $Location,               
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.String]
+        $ApiVersion="2016-12-01"
+    )
+    BEGIN
+    {
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $ArmUriBld.Query="api-version=$ApiVersion"
+        $Headers=@{Authorization="Bearer $($AccessToken)";Accept="application/json";}
+    }
+    PROCESS
+    {
+        if ($PSCmdlet.ParameterSetName -eq 'object')
+        {
+            $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
+        }
+        foreach ($item in $SubscriptionId)
+        {
+            try
+            {
+                $ArmUriBld.Path="subscriptions/$item/providers/$Namespace/locations/$Location/usages"
+                $Result=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json'
+                Write-Output $Result
+            }
+            catch {
+                Write-Warning "[Get-ArmQuotaUsage] $ApiVersion $item $Namespace $Location $_" 
+            }
+        }
+    }
+    END
+    {
+
+    }
+}
+
+<#
+    .SYNOPSIS
         Retrieves the provider feature registrations
     .PARAMETER SubscriptionId
         The azure subscription id(s)
@@ -3325,4 +3406,163 @@ Function Get-ArmTagName
     {
 
     }    
+}
+
+<#
+    .SYNOPSIS
+        Retrieves resource group deployments
+    .PARAMETER SubscriptionId
+        The subscription id
+    .PARAMETER ResourceGroupName
+        The resource group name
+    .PARAMETER DeploymentName
+        The deployment name
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+    .PARAMETER Filter
+        An OData filter expression to apply
+    .PARAMETER Top
+        Limit the result set
+#>
+Function Get-ArmDeployment
+{
+    [CmdletBinding(ConfirmImpact='None')]
+    param
+    (
+        [Parameter(Mandatory=$true)]
+        [System.String]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true)]
+        [System.String]
+        $ResourceGroupName,
+        [Parameter(Mandatory=$false)]
+        [System.String]
+        $DeploymentName,                
+        [Parameter(Mandatory=$true)]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false)]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false)]
+        [System.String]
+        $ApiVersion="2016-09-01",
+        [Parameter(Mandatory=$false)]
+        [String]
+        $Filter,        
+        [Parameter(Mandatory=$false)]
+        [Int32]
+        $Top
+    )
+    
+    $Headers=@{Authorization="Bearer $($AccessToken)";Accept="application/json";}
+    $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+    $UriQuery="api-version=$ApiVersion"
+    if ([String]::IsNullOrEmpty($DeploymentName))
+    {
+        
+        if ($Top -gt 0) {
+            $UriQuery+="&`$top=$Top"
+        }
+        if([String]::IsNullOrEmpty($Filter) -eq $false)
+        {
+            $UriQuery+="&`$filter=$Filter"
+        }
+        $ArmUriBld.Path="/subscriptions/$SubscriptionId/resourcegroups/$ResourceGroupName/providers/Microsoft.Resources/deployments"
+        $ArmUriBld.Query=$UriQuery
+        $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json' -ValueProperty 'value' -NextLinkProperty 'nextLink'
+    }
+    else
+    {
+        $ArmUriBld.Path="/subscriptions/$SubscriptionId/resourcegroups/$ResourceGroupName/providers/Microsoft.Resources/deployments/$DeploymentName"
+        $ArmUriBld.Query=$UriQuery
+        $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json'
+    }
+    if($ArmResult -ne $null)
+    {
+        Write-Output $ArmResult
+    }
+}
+
+<#
+    .SYNOPSIS
+        Retrieves resource group deployment operations
+    .PARAMETER SubscriptionId
+        The subscription id
+    .PARAMETER ResourceGroupName
+        The resource group name
+    .PARAMETER DeploymentName
+        The deployment name
+    .PARAMETER OperationId
+        The deployment operation id
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+    .PARAMETER Filter
+        An OData filter expression to apply
+    .PARAMETER Top
+        Limit the result set
+#>
+Function Get-ArmDeploymentOperation
+{
+    [CmdletBinding(ConfirmImpact='None')]
+    param
+    (
+        [Parameter(Mandatory=$true)]
+        [System.String]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true)]
+        [System.String]
+        $ResourceGroupName,
+        [Parameter(Mandatory=$true)]
+        [System.String]
+        $DeploymentName,
+        [Parameter(Mandatory=$false)]
+        [String]
+        $OperationId,        
+        [Parameter(Mandatory=$true)]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false)]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false)]
+        [System.String]
+        $ApiVersion="2016-09-01",
+        [Parameter(Mandatory=$false)]
+        [Int32]
+        $Top
+    )
+    
+    $Headers=@{Authorization="Bearer $($AccessToken)";Accept="application/json";}
+    $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+    $ArmUriBld.Path="/subscriptions/$SubscriptionId/resourcegroups/$ResourceGroupName/providers/Microsoft.Resources/deployments/$DeploymentName/operations"
+    if ($Top -gt 0 -and [String]::IsNullOrEmpty($OperationId))
+    {
+        $ArmUriBld.Query="api-version=$ApiVersion&`$top=$Top"
+    }
+    else
+    {
+        $ArmUriBld.Query="api-version=$ApiVersion"
+    }
+    if ([String]::IsNullOrEmpty($OperationId))
+    {
+        $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json' -ValueProperty 'value' -NextLinkProperty 'nextLink' 
+    }
+    else
+    {
+        $ArmUriBld.Path="/subscriptions/$SubscriptionId/resourcegroups/$ResourceGroupName/providers/Microsoft.Resources/deployments/$DeploymentName/operations/$OperationId"
+        $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json'
+    }
+    if ($ArmResult -ne $null)
+    {
+        Write-Output $ArmResult
+    }
 }
