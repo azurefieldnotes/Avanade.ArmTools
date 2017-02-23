@@ -3745,3 +3745,314 @@ Function Get-ArmDeploymentOperation
         Write-Output $ArmResult
     }
 }
+
+<#
+    .SYNOPSIS
+        Retrieves the managed disks from a subscription
+    .PARAMETER Subscription
+        The subscription as an object
+    .PARAMETER SubscriptionId
+        The subscription id
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ResourceGroup
+        The resource group name
+    .PARAMETER DiskName
+        The managed disk name
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+#>
+Function Get-ArmVmManagedDisk
+{
+    [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
+    param
+    (
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [psobject[]]
+        $Subscription,
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [System.String[]]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.String]
+        $ResourceGroup,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.String]
+        $DiskName,        
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.String]
+        $ApiVersion="2016-04-30-preview"
+    )
+
+    BEGIN
+    {
+        if ([String]::IsNullOrEmpty($DiskName) -eq $false -and [string]::IsNullOrEmpty($ResourceGroup))
+        {
+            throw "A resource group must be specified!"
+        }        
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $ArmUriBld.Query="api-version=$ApiVersion"
+        $Headers=@{Authorization="Bearer $($AccessToken)";Accept="application/json";}
+    }
+    PROCESS
+    {
+        if ($PSCmdlet.ParameterSetName -eq 'object')
+        {
+            $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
+        }
+        foreach ($item in $SubscriptionId)
+        {
+            try
+            {
+                $ArmUriBld.Path="/subscriptions/$item/providers/Microsoft.Compute/disks"
+                if ([string]::IsNullOrEmpty($ResourceGroup) -eq $false) {
+                    $ArmUriBld.Path="/subscriptions/$item/resourceGroups/$ResourceGroup/providers/Microsoft.Compute/disks"
+                }
+                if ([String]::IsNullOrEmpty($DiskName) -eq $false) {
+                    $ArmUriBld.Path="/subscriptions/$item/resourceGroups/$ResourceGroup/providers/Microsoft.Compute/disks/$DiskName"
+                    $ArmDisk=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json' -ErrorAction Stop
+                    if ($ArmDisk -ne $null) {
+                        Write-Output $ArmDisk
+                    }                
+                }
+                else
+                {
+                    $ArmDisks=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
+                    if($ArmDisks -ne $null)
+                    {
+                        Write-Output $ArmDisks
+                    }                    
+                }
+            }
+            catch
+            {
+                Write-Warning "[Get-ArmVmManagedDisk] $item $ApiVersion $_"
+            }
+        }
+    }
+    END
+    {
+
+    }
+}
+
+<#
+    .SYNOPSIS
+        Retrieves the disk images from a subscription
+    .PARAMETER Subscription
+        The subscription as an object
+    .PARAMETER SubscriptionId
+        The subscription id
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ResourceGroup
+        The resource group name
+    .PARAMETER ImageName
+        The disk image name
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+#>
+Function Get-ArmVmDiskImage
+{
+    [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
+    param
+    (
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [psobject[]]
+        $Subscription,
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [System.String[]]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.String]
+        $ResourceGroup,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.String]
+        $ImageName,        
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.String]
+        $ApiVersion="2016-04-30-preview"
+    )
+
+    BEGIN
+    {
+        if ([String]::IsNullOrEmpty($ImageName) -eq $false -and [string]::IsNullOrEmpty($ResourceGroup))
+        {
+            throw "A resource group must be specified!"
+        }        
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $ArmUriBld.Query="api-version=$ApiVersion"
+        $Headers=@{Authorization="Bearer $($AccessToken)";Accept="application/json";}
+    }
+    PROCESS
+    {
+        if ($PSCmdlet.ParameterSetName -eq 'object')
+        {
+            $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
+        }
+        foreach ($item in $SubscriptionId)
+        {
+            try
+            {
+
+                $ArmUriBld.Path="/subscriptions/$item/providers/Microsoft.Compute/images"
+                if ([string]::IsNullOrEmpty($ResourceGroup) -eq $false) {
+                    $ArmUriBld.Path="/subscriptions/$item/resourceGroups/$ResourceGroup/providers/Microsoft.Compute/images"
+                }
+                if ([String]::IsNullOrEmpty($ImageName) -eq $false) {
+                    $ArmUriBld.Path="/subscriptions/$item/resourceGroups/$ResourceGroup/providers/Microsoft.Compute/images/$ImageName"
+                    $ArmDisk=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json' -ErrorAction Stop
+                    if ($ArmDisk -ne $null) {
+                        Write-Output $ArmDisk
+                    }                    
+                }
+                else
+                {
+                    $ArmDisks=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
+                    if($ArmDisks -ne $null)
+                    {
+                        Write-Output $ArmDisks
+                    }                    
+                }
+            }
+            catch
+            {
+                Write-Warning "[Get-ArmVmDiskImage] $item $ApiVersion $_"
+            }
+        }
+    }
+    END
+    {
+
+    }
+}
+
+<#
+    .SYNOPSIS
+        Retrieves the vm snapshots from a subscription
+    .PARAMETER Subscription
+        The subscription as an object
+    .PARAMETER SubscriptionId
+        The subscription id
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ResourceGroup
+        The resource group name
+    .PARAMETER SnapshotName
+        The snapshot name
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+#>
+Function Get-ArmVmSnapshot
+{
+    [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
+    param
+    (
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [psobject[]]
+        $Subscription,
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [System.String[]]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.String]
+        $ResourceGroup,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.String]
+        $SnapshotName,  
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.String]
+        $ApiVersion="2016-04-30-preview"
+    )
+
+    BEGIN
+    {
+        if ([String]::IsNullOrEmpty($SnapshotName) -eq $false -and [string]::IsNullOrEmpty($ResourceGroup))
+        {
+            throw "A resource group must be specified!"
+        }        
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $ArmUriBld.Query="api-version=$ApiVersion"
+        $Headers=@{Authorization="Bearer $($AccessToken)";Accept="application/json";}
+    }
+    PROCESS
+    {
+        if ($PSCmdlet.ParameterSetName -eq 'object')
+        {
+            $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
+        }
+        foreach ($item in $SubscriptionId)
+        {
+            try
+            {
+
+                $ArmUriBld.Path="/subscriptions/$item/providers/Microsoft.Compute/snapshots"
+                if ([string]::IsNullOrEmpty($ResourceGroup) -eq $false) {
+                    $ArmUriBld.Path="/subscriptions/$item/resourceGroups/$ResourceGroup/providers/Microsoft.Compute/snapshots"
+                }
+                if ([String]::IsNullOrEmpty($SnapshotName) -eq $false) {
+                    $ArmUriBld.Path="/subscriptions/$item/resourceGroups/$ResourceGroup/providers/Microsoft.Compute/snapshots/$SnapshotName"
+                    $ArmDisk=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json' -ErrorAction Stop
+                    if ($ArmDisk -ne $null) {
+                        Write-Output $ArmDisk
+                    }                    
+                }
+                else
+                {
+                    $ArmDisks=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
+                    if($ArmDisks -ne $null)
+                    {
+                        Write-Output $ArmDisks
+                    }                    
+                }
+            }
+            catch
+            {
+                Write-Warning "[Get-ArmVmSnapshot] $item $ApiVersion $_"
+            }
+        }
+    }
+    END
+    {
+
+    }
+}
