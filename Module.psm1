@@ -1522,6 +1522,8 @@ Function Get-ArmResourceLock
         Return only the top N results
     .PARAMETER Filter
         The additional ARM OData Filter (resourceType eq 'Microsoft.Compute/virtualMachines')
+    .PARAMETER ResourceType
+        A resource type to scope the retrieval
     .PARAMETER AccessToken
         The OAuth access token
     .PARAMETER ApiEndpoint
@@ -1534,34 +1536,46 @@ Function Get-ArmResource
     [CmdletBinding(DefaultParameterSetName='object')]
     param
     (
+        [Parameter(Mandatory=$true,ParameterSetName='explicitByNamespace',ValueFromPipeline=$true)]
         [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipeline=$true)]
         [System.String[]]
         $SubscriptionId,
+        [Parameter(Mandatory=$true,ParameterSetName='objectByNamespace',ValueFromPipeline=$true)]        
         [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
         [System.Object[]]
-        $Subscription,
+        $Subscription,      
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [System.String]
         $ResourceGroup,
+        [Parameter(Mandatory=$true,ParameterSetName='objectByNamespace')]
+        [Parameter(Mandatory=$true,ParameterSetName='explicitByNamespace')]
+        [System.String]
+        $ResourceType,           
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [System.String]
-        $Filter,
+        $Filter,      
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [System.Int32]
         $Top,
+        [Parameter(Mandatory=$true,ParameterSetName='objectByNamespace')]
+        [Parameter(Mandatory=$true,ParameterSetName='explicitByNamespace')]        
         [Parameter(Mandatory=$true,ParameterSetName='object')]
         [Parameter(Mandatory=$true,ParameterSetName='explicit')]
         [System.String]
         $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='objectByNamespace')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicitByNamespace')]
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='objectByNamespace')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicitByNamespace')]
         [System.String]
         $ApiVersion=$Script:DefaultArmApiVersion
     )
@@ -1583,7 +1597,7 @@ Function Get-ArmResource
     }
     PROCESS
     {
-        if ($PSCmdlet.ParameterSetName -eq "object")
+        if ($PSCmdlet.ParameterSetName -in "object",'objectByNamespace')
         {
             $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
         }
@@ -1591,15 +1605,33 @@ Function Get-ArmResource
         {
             #Maybe they sent subscription.id not subscription.subscriptionid
             $SubId=$item.Split('/')|Select-Object -Last 1
-            $ArmUriBld.Path="subscriptions/$SubId/resources"
-            if ([String]::IsNullOrEmpty($ResourceGroup) -eq $false)
-            {
-                $ArmUriBld.Path+="/resourceGroups/$ResourceGroup"
-            }
             try
             {
+                if ($PSCmdlet.ParameterSetName -in 'explicitByNamespace','objectByNamespace')
+                {
+                    $TypeApiVersion=Get-ArmResourceTypeApiVersion -SubscriptionId $item `
+                        -ResourceType $ResourceType -AccessToken $AccessToken `
+                        -ApiEndpoint $ApiEndpoint -ApiVersion $ApiVersion|Select-Object -First 1
+                    if([String]::IsNullOrEmpty($TypeApiVersion))
+                    {
+                        throw "Unable to resolve the api version for $ResourceType"
+                    }
+                    $ArmUriBld.Path="subscriptions/$SubId/providers/$ResourceType"
+                    $ArmUriBld.Query="api-version=$TypeApiVersion"
+                }
+                else
+                {
+                    $ArmUriBld.Path="subscriptions/$SubId/resources"
+                    if ([String]::IsNullOrEmpty($ResourceGroup) -eq $false)
+                    {
+                        $ArmUriBld.Path+="/resourceGroups/$ResourceGroup"
+                    }                   
+                }
                 $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json'
-                Write-Output $ArmResult
+                if($ArmResult -ne $null)
+                {
+                    Write-Output $ArmResult
+                } 
             }
             catch
             {
@@ -1643,6 +1675,10 @@ Function Get-ArmResourceInstance
         $AccessToken,
         [Parameter(Mandatory=$false,ParameterSetName='id')]
         [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [System.String[]]
+        $ExpandProperties,        
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor
     )
@@ -1666,11 +1702,14 @@ Function Get-ArmResourceInstance
             $ApiVersions=GetResourceTypeApiVersion -SubscriptionId $ResourceData.SubscriptionId -AccessToken $AccessToken -ResourceType $ResourceType
             foreach ($ApiVersion in $ApiVersions)
             {
-                Write-Verbose "Requesting instance $ResourceId with API version $ApiVersion"
-                $ArmUriBld.Path=$ResourceId
-                $ArmUriBld.Query="api-version=$ApiVersion"
                 try
                 {
+                    Write-Verbose "Requesting instance $ResourceId with API version $ApiVersion"
+                    $ArmUriBld.Path=$ResourceId
+                    $ArmUriBld.Query="api-version=$ApiVersion"
+                    if ($ExpandProperties -ne $null) {
+                        $ArmUriBld.Query="api-version=$ApiVersion&`$expand=$([String]::Join(',',$ExpandProperties))"
+                    }                    
                     $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders -ErrorAction Stop
                     break
                 }
@@ -4048,6 +4087,432 @@ Function Get-ArmVmSnapshot
             catch
             {
                 Write-Warning "[Get-ArmVmSnapshot] $item $ApiVersion $_"
+            }
+        }
+    }
+    END
+    {
+
+    }
+}
+
+<#
+    .SYNOPSIS
+        Retrieves the platform image publishers for a subscription
+    .PARAMETER Subscription
+        The subscription as an object
+    .PARAMETER SubscriptionId
+        The subscription id
+    .PARAMETER Location
+        The image location
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+#>
+Function Get-ArmPlatformImagePublisher
+{
+    [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
+    param
+    (
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [psobject[]]
+        $Subscription,
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [System.String[]]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $Location,   
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.String]
+        $ApiVersion="2017-03-30"
+    )
+
+    BEGIN
+    {
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $ArmUriBld.Query="api-version=$ApiVersion"
+        $Headers=@{Authorization="Bearer $($AccessToken)";Accept="application/json";}
+    }
+    PROCESS
+    {
+        if ($PSCmdlet.ParameterSetName -eq 'object')
+        {
+            $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
+        }
+        foreach ($item in $SubscriptionId)
+        {
+            try
+            {
+                $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Compute/locations/$Location/publishers"
+                $Usages=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json' -ErrorAction Stop
+                if($Usages -ne $null)
+                {
+                    Write-Output $Usages
+                }
+            }
+            catch
+            {
+                Write-Warning "[Get-ArmPlatformImagePublisher] $ApiEndpoint $item $_"
+            }
+        }
+
+    }
+    END
+    {
+
+    }
+}
+
+<#
+    .SYNOPSIS
+        Retrieves the platform image publisher offers for a subscription
+    .PARAMETER Publisher
+        The image publisher as an object
+    .PARAMETER PublisherId
+        The image publisher id
+    .PARAMETER Subscription
+        The subscription as an object
+    .PARAMETER SubscriptionId
+        The subscription id
+    .PARAMETER Location
+        The image location
+    .PARAMETER PublisherName
+        The image publisher
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+#>
+Function Get-ArmPlatformImagePublisherOffer
+{
+    [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='byPublisherObject')]
+    param
+    (
+        [Parameter(Mandatory=$true,ParameterSetName='byPublisherObject',ValueFromPipeline=$true)]
+        [psobject[]]
+        $Publisher,
+        [Parameter(Mandatory=$true,ParameterSetName='byPublisherId')]
+        [string[]]
+        $PublisherId,        
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [psobject[]]
+        $Subscription,        
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [System.String[]]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $Location,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $PublisherName,
+        [Parameter(Mandatory=$true,ParameterSetName='byPublisherId')]
+        [Parameter(Mandatory=$true,ParameterSetName='byPublisherObject')]
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='byPublisherId')]
+        [Parameter(Mandatory=$false,ParameterSetName='byPublisherObject')]
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ParameterSetName='byPublisherId')]
+        [Parameter(Mandatory=$false,ParameterSetName='byPublisherObject')]
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.String]
+        $ApiVersion="2017-03-30"
+    )
+
+    BEGIN
+    {
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $ArmUriBld.Query="api-version=$ApiVersion"
+        $Headers=@{Authorization="Bearer $($AccessToken)";Accept="application/json";}
+    }
+    PROCESS
+    {
+        if ($PSCmdlet.ParameterSetName -in 'object','id') {
+            if ($PSCmdlet.ParameterSetName -eq 'object')
+            {
+                $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
+            }
+            foreach ($item in $SubscriptionId) {
+                $PublisherId+="/subscriptions/$item/providers/Microsoft.Compute/$Location/publishers/$PublisherName"
+            }
+        }
+        if ($PSCmdlet.ParameterSetName -eq 'byPublisherObject')
+        {
+            $PublisherId=$Publisher|Select-Object -ExpandProperty id    
+        }
+        foreach ($ImagePublisher in $PublisherId)
+        {
+            try
+            {
+                $ArmUriBld.Path="$ImagePublisher/artifacttypes/vmimage/offers"
+                $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json' -ErrorAction Stop
+                if ($ArmResult -ne $null) {
+                    Write-Output $ArmResult
+                }                
+            }
+            catch {
+                Write-Warning "[Get-ArmPlatformImagePublisherOffer] $ImagePublisher $ApiVersion $_"
+            }
+        }
+    }
+    END
+    {
+
+    }
+}
+
+<#
+    .SYNOPSIS
+        Retrieves the platform image skus for a subscription
+    .PARAMETER Offer
+        The image offer as an object
+    .PARAMETER OfferId
+        The image offer id
+    .PARAMETER Subscription
+        The subscription as an object
+    .PARAMETER SubscriptionId
+        The subscription id
+    .PARAMETER Location
+        The image location
+    .PARAMETER PublisherName
+        The image publisher
+    .PARAMETER OfferName
+        The image offer
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+#>
+Function Get-ArmPlatformImageSku
+{
+    [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='byPublisherObject')]
+    param
+    (
+        [Parameter(Mandatory=$true,ParameterSetName='byPublisherObject',ValueFromPipeline=$true)]
+        [psobject[]]
+        $Offer,
+        [Parameter(Mandatory=$true,ParameterSetName='byPublisherId')]
+        [string[]]
+        $OfferId,        
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [psobject[]]
+        $Subscription,        
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [System.String[]]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $Location,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $PublisherName,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $OfferName,
+        [Parameter(Mandatory=$true,ParameterSetName='byPublisherId')]
+        [Parameter(Mandatory=$true,ParameterSetName='byPublisherObject')]
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='byPublisherId')]
+        [Parameter(Mandatory=$false,ParameterSetName='byPublisherObject')]
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ParameterSetName='byPublisherId')]
+        [Parameter(Mandatory=$false,ParameterSetName='byPublisherObject')]
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.String]
+        $ApiVersion="2017-03-30"
+    )
+
+    BEGIN
+    {
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $ArmUriBld.Query="api-version=$ApiVersion"
+        $Headers=@{Authorization="Bearer $($AccessToken)";Accept="application/json";}
+    }
+    PROCESS
+    {
+        if ($PSCmdlet.ParameterSetName -in 'object','id') {
+            if ($PSCmdlet.ParameterSetName -eq 'object')
+            {
+                $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
+            }
+            foreach ($item in $SubscriptionId) {
+                $OfferId+="/subscriptions/$item/providers/Microsoft.Compute/$Location/publishers/$PublisherName/artifacttypes/vmimage/offers/$OfferName"
+            }
+        }
+        if ($PSCmdlet.ParameterSetName -eq 'byPublisherObject')
+        {
+            $OfferId=$Offer|Select-Object -ExpandProperty id    
+        }
+        foreach ($ImageOffer in $OfferId)
+        {
+            try
+            {
+                $ArmUriBld.Path="$ImageOffer/skus"
+                $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json' -ErrorAction Stop
+                if ($ArmResult -ne $null) {
+                    Write-Output $ArmResult
+                }                
+            }
+            catch {
+                Write-Warning "[Get-ArmPlatformImageSku] $ImagePublisher $ApiVersion $_"
+            }
+        }
+    }
+    END
+    {
+
+    }
+}
+
+<#
+    .SYNOPSIS
+        Retrieves the platform image versions for a subscription
+    .PARAMETER ImageSku
+        The image SKU as an object
+    .PARAMETER ImageSkuId
+        The image SKU id
+    .PARAMETER Subscription
+        The subscription as an object
+    .PARAMETER SubscriptionId
+        The subscription id
+    .PARAMETER Location
+        The image location
+    .PARAMETER PublisherName
+        The image publisher
+    .PARAMETER OfferName
+        The image offer
+    .PARAMETER SkuName
+        The image SKU name
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+#>
+Function Get-ArmPlatformImageVersion
+{
+    [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='byPublisherObject')]
+    param
+    (
+        [Parameter(Mandatory=$true,ParameterSetName='byPublisherObject',ValueFromPipeline=$true)]
+        [psobject[]]
+        $ImageSku,
+        [Parameter(Mandatory=$true,ParameterSetName='byPublisherId')]
+        [string[]]
+        $ImageSkuId,        
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [psobject[]]
+        $Subscription,        
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [System.String[]]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $Location,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $PublisherName,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $OfferName,
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $SkuName,
+        [Parameter(Mandatory=$true,ParameterSetName='byPublisherId')]
+        [Parameter(Mandatory=$true,ParameterSetName='byPublisherObject')]
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='byPublisherId')]
+        [Parameter(Mandatory=$false,ParameterSetName='byPublisherObject')]
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ParameterSetName='byPublisherId')]
+        [Parameter(Mandatory=$false,ParameterSetName='byPublisherObject')]
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [System.String]
+        $ApiVersion="2017-03-30"
+    )
+
+    BEGIN
+    {
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $ArmUriBld.Query="api-version=$ApiVersion"
+        $Headers=@{Authorization="Bearer $($AccessToken)";Accept="application/json";}
+    }
+    PROCESS
+    {
+        if ($PSCmdlet.ParameterSetName -in 'object','id') {
+            if ($PSCmdlet.ParameterSetName -eq 'object')
+            {
+                $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
+            }
+            foreach ($item in $SubscriptionId) {
+                $ImageSkuId+="/subscriptions/$item/providers/Microsoft.Compute/$Location/publishers/$PublisherName/artifacttypes/vmimage/offers/$OfferName/skus/$SkuName"
+            }
+        }
+        if ($PSCmdlet.ParameterSetName -eq 'byPublisherObject')
+        {
+            $ImageSkuId=$ImageSku|Select-Object -ExpandProperty id    
+        }
+        foreach ($Sku in $ImageSkuId)
+        {
+            try
+            {
+                $ArmUriBld.Path="$Sku/versions"
+                $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json' -ErrorAction Stop
+                if ($ArmResult -ne $null) {
+                    Write-Output $ArmResult
+                }                
+            }
+            catch {
+                Write-Warning "[Get-ArmPlatformImageVersion] $ImagePublisher $ApiVersion $_"
             }
         }
     }
