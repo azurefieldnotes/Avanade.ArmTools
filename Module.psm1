@@ -177,7 +177,6 @@ function GetArmODataResult
         [System.String]
         $ErrorProperty='error'
     )
-
     $ResultPages=0
     $TotalItems=0
     do
@@ -188,17 +187,22 @@ function GetArmODataResult
             $ArmResult=Invoke-RestMethod -Uri $Uri -Headers $Headers -ContentType $ContentType
             if ($ArmResult -ne $null)
             {
+                #Can we match the error?
                 if($ArmResult.PSobject.Properties.name -match $ErrorProperty)
                 {
                     throw ($ArmResult|Select-Object -ExpandProperty $ErrorProperty)|ConvertTo-Json
                 }
+                #Is there an OData value set?
                 elseif($ArmResult.PSobject.Properties.name -match $ValueProperty)
                 {
+                    Write-Verbose "[GetArmODataResult] OData.$ValueProperty set retrieved"
                     $RequestValue=$ArmResult|Select-Object -ExpandProperty $ValueProperty
                 }
+                #Single Value
                 else
                 {
-                    $RequestValue=$null
+                    Write-Verbose "[GetArmODataResult] Single Value Retrieved"
+                    $RequestValue=$ArmResult
                 }
                 if($RequestValue -ne $null)
                 {
@@ -221,6 +225,7 @@ function GetArmODataResult
                             }
                             else
                             {
+                                Write-Verbose "[GetArmODataResult] No next link $NextLinkProperty in result set."
                                 $Uri=$null
                             }
                         }
@@ -1280,14 +1285,10 @@ Function Get-ArmResourceGroup
             }
             try
             {
-                $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders -ErrorAction Continue
-                if([String]::IsNullOrEmpty($Name) -eq $false)
+                $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders
+                if($ArmResult -ne $null)
                 {
                     Write-Output $ArmResult
-                }
-                else
-                {
-                    Write-Output $ArmResult.value
                 }
             }
             catch [System.Exception]
@@ -1359,37 +1360,12 @@ Function Get-ArmLocation
         if ($Subscription -eq $null -and [String]::IsNullOrEmpty($SubscriptionId))
         {
             $ArmUriBld.Path='locations'
-            $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json'
-            if([String]::IsNullOrEmpty($Location) -eq $false)
+            $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json'
+            if ($ArmResult -ne $null)
             {
-                $ArmLocation=$ArmResult.value|Where-Object{$_.name -eq $Location -or $_.displayName -eq $Location}|Select-Object -First 1
-                if($ArmLocation -ne $null)
-                {
-                    Write-Output $ArmLocation
-                }
-                else
-                {
-                    Write-Warning "[Get-ArmLocation] There is no location $Location available"
-                }
-            }
-            else
-            {
-                Write-Output $ArmResult.value
-            }
-        }
-        else
-        {
-            if ($PSCmdlet.ParameterSetName -eq "object")
-            {
-                $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
-            }
-            foreach ($item in $SubscriptionId)
-            {
-                $ArmUriBld.Path="subscriptions/$item/locations"
-                $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json'
                 if([String]::IsNullOrEmpty($Location) -eq $false)
                 {
-                    $ArmLocation=$ArmResult.value|Where-Object{$_.name -eq $Location -or $_.displayName -eq $Location}|Select-Object -First 1
+                    $ArmLocation=$ArmResult|Where-Object{$_.name -eq $Location -or $_.displayName -eq $Location}|Select-Object -First 1
                     if($ArmLocation -ne $null)
                     {
                         Write-Output $ArmLocation
@@ -1401,7 +1377,38 @@ Function Get-ArmLocation
                 }
                 else
                 {
-                    Write-Output $ArmResult.value
+                    Write-Output $ArmResult
+                }                
+            }
+        }
+        else
+        {
+            if ($PSCmdlet.ParameterSetName -eq "object")
+            {
+                $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
+            }
+            foreach ($item in $SubscriptionId)
+            {
+                    $ArmUriBld.Path="subscriptions/$item/locations"
+                    $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json'
+                    if ($ArmResult -ne $null)
+                    {
+                    if([String]::IsNullOrEmpty($Location) -eq $false)
+                    {
+                        $ArmLocation=$ArmResult|Where-Object{$_.name -eq $Location -or $_.displayName -eq $Location}|Select-Object -First 1
+                        if($ArmLocation -ne $null)
+                        {
+                            Write-Output $ArmLocation
+                        }
+                        else
+                        {
+                            Write-Warning "[Get-ArmLocation] There is no location $Location available"
+                        }
+                    }
+                    else
+                    {
+                        Write-Output $ArmResult
+                    }                    
                 }
             }
 
@@ -1606,40 +1613,31 @@ Function Get-ArmResource
         }
         foreach ($item in $SubscriptionId)
         {
-            #Maybe they sent subscription.id not subscription.subscriptionid
-            $SubId=$item.Split('/')|Select-Object -Last 1
-            try
+            if ($PSCmdlet.ParameterSetName -in 'explicitByNamespace','objectByNamespace')
             {
-                if ($PSCmdlet.ParameterSetName -in 'explicitByNamespace','objectByNamespace')
+                $TypeApiVersion=Get-ArmResourceTypeApiVersion -SubscriptionId $item `
+                    -ResourceType $ResourceType -AccessToken $AccessToken `
+                    -ApiEndpoint $ApiEndpoint -ApiVersion $ApiVersion|Select-Object -First 1
+                if([String]::IsNullOrEmpty($TypeApiVersion))
                 {
-                    $TypeApiVersion=Get-ArmResourceTypeApiVersion -SubscriptionId $item `
-                        -ResourceType $ResourceType -AccessToken $AccessToken `
-                        -ApiEndpoint $ApiEndpoint -ApiVersion $ApiVersion|Select-Object -First 1
-                    if([String]::IsNullOrEmpty($TypeApiVersion))
-                    {
-                        throw "Unable to resolve the api version for $ResourceType"
-                    }
-                    $ArmUriBld.Path="subscriptions/$SubId/providers/$ResourceType"
-                    $ArmUriBld.Query="api-version=$TypeApiVersion"
+                    throw "Unable to resolve the api version for $ResourceType"
                 }
-                else
-                {
-                    $ArmUriBld.Path="subscriptions/$SubId/resources"
-                    if ([String]::IsNullOrEmpty($ResourceGroup) -eq $false)
-                    {
-                        $ArmUriBld.Path+="/resourceGroups/$ResourceGroup"
-                    }                   
-                }
-                $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json'
-                if($ArmResult -ne $null)
-                {
-                    Write-Output $ArmResult
-                } 
+                $ArmUriBld.Path="subscriptions/$item/providers/$ResourceType"
+                $ArmUriBld.Query="api-version=$TypeApiVersion"
             }
-            catch
+            else
             {
-                Write-Warning "[Get-ArmResource] Subscription $item $_"
+                $ArmUriBld.Path="subscriptions/$item/resources"
+                if ([String]::IsNullOrEmpty($ResourceGroup) -eq $false)
+                {
+                    $ArmUriBld.Path+="/resourceGroups/$ResourceGroup"
+                }                   
             }
+            $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json'
+            if($ArmResult -ne $null)
+            {
+                Write-Output $ArmResult
+            } 
         }
     }
     END
@@ -2002,18 +2000,16 @@ Function Get-ArmRateCard
         {
             Write-Verbose "[Get-ArmRateCard] Subscription:$item OfferDurableId:$OfferDurableId Locale:$Locale Currency:$($DesiredRegion.ISOCurrencySymbol)"
             $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Commerce/RateCard"
-            try
-            {
-                $Result=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json' -ErrorAction Stop
-                Write-Output $Result
-            }
-            catch [System.Exception]
-            {
-                Write-Warning "[Get-ArmRateCard] Subscription $item - $_"
+            $Result=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json' -ErrorAction Stop
+            if ($Result -ne $null) {
+                Write-Output $Result    
             }
         }
     }
-    END{}
+    END
+    {
+
+    }
 }
 
 #endregion
@@ -2083,25 +2079,18 @@ Function Get-ArmResourceMetricDefinition
                 $ArmUriBld.Query="api-version=$ApiVersion"
             }
 
-            try
-            {
-                Write-Verbose "Retrieving Metric Definitions for $item"
-                $RequestResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json' -ErrorAction Stop
-                #HACK for malformed JSON
-                if ($RequestResult.GetType().FullName -eq 'System.String') {
-                    $RequestResult=$RequestResult.Replace("ResourceUri","resourceUri").Replace("ResourceId","resourceId")
-                    $Result=$RequestResult|ConvertFrom-Json
-                    Write-Output $Result.value
-                }
-                else
-                {
-                    Write-Output $RequestResult.value
-                }
+            Write-Verbose "[Get-ArmResourceMetricDefinition] Retrieving Metric Definitions for $item"
+            $RequestResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json' -ErrorAction Stop
+            #HACK for malformed JSON
+            if ($RequestResult.GetType().FullName -eq 'System.String') {
+                $RequestResult=$RequestResult.Replace("ResourceUri","resourceUri").Replace("ResourceId","resourceId")
+                $Result=$RequestResult|ConvertFrom-Json
+                Write-Output $Result.value
             }
-            catch [System.Exception]
+            else
             {
-                Write-Warning "[Get-ArmResourceMetricDefinition] Resource $item - $_"
-            }
+                Write-Output $RequestResult.value
+            }            
 
         }
     }
@@ -3362,28 +3351,19 @@ Function Get-ArmFeature
         }
         foreach ($item in $SubscriptionId)
         {
-            try
+            $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Features/features"
+            if([String]::IsNullOrEmpty($Namespace) -eq $false)
             {
-                $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Features/features"
-                if([String]::IsNullOrEmpty($Namespace) -eq $false)
-                {
-                    $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Features/providers/$Namespace/features"
-                }
-                if ([string]::IsNullOrEmpty($FeatureName) -eq $false)
-                {
-                    $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Features/providers/$Namespace/features/$FeatureName"
-                    $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json' -ErrorAction Stop
-                }
-                else
-                {
-                    $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json'
-                }
-
-                Write-Output $ArmResult
+                $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Features/providers/$Namespace/features"
             }
-            catch
+            if ([string]::IsNullOrEmpty($FeatureName) -eq $false)
             {
-                Write-Warning "[Get-ArmFeature] Subscription $item - $_"
+                $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Features/providers/$Namespace/features/$FeatureName"
+            }
+            $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json'
+            if($ArmResult -ne $null)
+            {
+                Write-Output $ArmResult
             }
         }
     }
@@ -3689,7 +3669,6 @@ Function Get-ArmDeployment
     $UriQuery="api-version=$ApiVersion"
     if ([String]::IsNullOrEmpty($DeploymentName))
     {
-
         if ($Top -gt 0) {
             $UriQuery+="&`$top=$Top"
         }
@@ -3698,15 +3677,13 @@ Function Get-ArmDeployment
             $UriQuery+="&`$filter=$Filter"
         }
         $ArmUriBld.Path="/subscriptions/$SubscriptionId/resourcegroups/$ResourceGroupName/providers/Microsoft.Resources/deployments"
-        $ArmUriBld.Query=$UriQuery
-        $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json' -ValueProperty 'value' -NextLinkProperty 'nextLink'
     }
     else
     {
         $ArmUriBld.Path="/subscriptions/$SubscriptionId/resourcegroups/$ResourceGroupName/providers/Microsoft.Resources/deployments/$DeploymentName"
-        $ArmUriBld.Query=$UriQuery
-        $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json'
     }
+    $ArmUriBld.Query=$UriQuery
+    $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json' -ValueProperty 'value' -NextLinkProperty 'nextLink'    
     if($ArmResult -ne $null)
     {
         Write-Output $ArmResult
@@ -3777,15 +3754,11 @@ Function Get-ArmDeploymentOperation
     {
         $ArmUriBld.Query="api-version=$ApiVersion"
     }
-    if ([String]::IsNullOrEmpty($OperationId))
-    {
-        $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json' -ValueProperty 'value' -NextLinkProperty 'nextLink'
-    }
-    else
+    if ([String]::IsNullOrEmpty($OperationId) -eq $false)
     {
         $ArmUriBld.Path="/subscriptions/$SubscriptionId/resourcegroups/$ResourceGroupName/providers/Microsoft.Resources/deployments/$DeploymentName/operations/$OperationId"
-        $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json'
     }
+    $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json' -ValueProperty 'value' -NextLinkProperty 'nextLink'
     if ($ArmResult -ne $null)
     {
         Write-Output $ArmResult
@@ -4592,6 +4565,7 @@ Function Get-ArmBillingInvoice
             {
                 if ([string]::IsNullOrEmpty($InvoiceName))
                 {
+                    $ArmUriBld.Path="subscriptions/$SubId/providers/Microsoft.Billing/invoices"                    
                     if ([String]::IsNullOrEmpty($Filter) -eq $false) {
                         $ArmQuery+="&`$filter=$Filter"
                     }
@@ -4607,24 +4581,19 @@ Function Get-ArmBillingInvoice
                     if ($Expand -ne $null)
                     {
                         $ArmQuery+="&`$expand=$([String]::Join(',',$Expand))"
-                    }                             
-                    $ArmUriBld.Path="subscriptions/$SubId/providers/Microsoft.Billing/invoices"
-                    $ArmUriBld.Query=$ArmQuery
-                    $Invoices=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json' -ValueProperty 'value' -NextLinkProperty 'nextLink'            
-                    if ($Invoices -ne $null) {
-                        Write-Output $Invoices
                     }
                 }
                 else
                 {
                     $ArmUriBld.Path="subscriptions/$SubId/providers/Microsoft.Billing/invoices/$InvoiceName"
-                    $ArmUriBld.Query=$ArmQuery
-                    $Invoice=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json' -ErrorAction $Stop
-                    if($Invoice -ne $null)
-                    {
-                        Write-Output $Invoice
-                    }
-                }                
+                    
+                }
+                $ArmUriBld.Query=$ArmQuery
+                $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json' -ValueProperty 'value' -NextLinkProperty 'nextLink'
+                if($ArmResult -ne $null)
+                {
+                    Write-Output $ArmResult
+                }
             }
             catch
             {
