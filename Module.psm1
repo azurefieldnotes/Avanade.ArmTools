@@ -3738,31 +3738,17 @@ Function Get-ArmVmManagedDisk
         }
         foreach ($item in $SubscriptionId)
         {
-            try
-            {
-                $ArmUriBld.Path="/subscriptions/$item/providers/Microsoft.Compute/disks"
-                if ([string]::IsNullOrEmpty($ResourceGroup) -eq $false) {
-                    $ArmUriBld.Path="/subscriptions/$item/resourceGroups/$ResourceGroup/providers/Microsoft.Compute/disks"
-                }
-                if ([String]::IsNullOrEmpty($DiskName) -eq $false) {
-                    $ArmUriBld.Path="/subscriptions/$item/resourceGroups/$ResourceGroup/providers/Microsoft.Compute/disks/$DiskName"
-                    $ArmDisk=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json' -ErrorAction Stop
-                    if ($ArmDisk -ne $null) {
-                        Write-Output $ArmDisk
-                    }                
-                }
-                else
-                {
-                    $ArmDisks=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
-                    if($ArmDisks -ne $null)
-                    {
-                        Write-Output $ArmDisks
-                    }                    
-                }
+            $ArmUriBld.Path="/subscriptions/$item/providers/Microsoft.Compute/disks"
+            if ([string]::IsNullOrEmpty($ResourceGroup) -eq $false) {
+                $ArmUriBld.Path="/subscriptions/$item/resourceGroups/$ResourceGroup/providers/Microsoft.Compute/disks"
             }
-            catch
+            if ([String]::IsNullOrEmpty($DiskName) -eq $false) {
+                $ArmUriBld.Path="/subscriptions/$item/resourceGroups/$ResourceGroup/providers/Microsoft.Compute/disks/$DiskName"             
+            }
+            $ArmDisks=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
+            if($ArmDisks -ne $null)
             {
-                Write-Warning "[Get-ArmVmManagedDisk] $item $ApiVersion $_"
+                Write-Output $ArmDisks
             }
         }
     }
@@ -3841,32 +3827,17 @@ Function Get-ArmVmDiskImage
         }
         foreach ($item in $SubscriptionId)
         {
-            try
-            {
-
-                $ArmUriBld.Path="/subscriptions/$item/providers/Microsoft.Compute/images"
-                if ([string]::IsNullOrEmpty($ResourceGroup) -eq $false) {
-                    $ArmUriBld.Path="/subscriptions/$item/resourceGroups/$ResourceGroup/providers/Microsoft.Compute/images"
-                }
-                if ([String]::IsNullOrEmpty($ImageName) -eq $false) {
-                    $ArmUriBld.Path="/subscriptions/$item/resourceGroups/$ResourceGroup/providers/Microsoft.Compute/images/$ImageName"
-                    $ArmDisk=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json' -ErrorAction Stop
-                    if ($ArmDisk -ne $null) {
-                        Write-Output $ArmDisk
-                    }                    
-                }
-                else
-                {
-                    $ArmDisks=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
-                    if($ArmDisks -ne $null)
-                    {
-                        Write-Output $ArmDisks
-                    }                    
-                }
+            $ArmUriBld.Path="/subscriptions/$item/providers/Microsoft.Compute/images"
+            if ([string]::IsNullOrEmpty($ResourceGroup) -eq $false) {
+                $ArmUriBld.Path="/subscriptions/$item/resourceGroups/$ResourceGroup/providers/Microsoft.Compute/images"
             }
-            catch
+            if ([String]::IsNullOrEmpty($ImageName) -eq $false) {
+                $ArmUriBld.Path="/subscriptions/$item/resourceGroups/$ResourceGroup/providers/Microsoft.Compute/images/$ImageName"
+            }
+            $ArmDisks=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
+            if($ArmDisks -ne $null)
             {
-                Write-Warning "[Get-ArmVmDiskImage] $item $ApiVersion $_"
+                Write-Output $ArmDisks
             }
         }
     }
@@ -3952,21 +3923,14 @@ Function Get-ArmVmSnapshot
                 if ([string]::IsNullOrEmpty($ResourceGroup) -eq $false) {
                     $ArmUriBld.Path="/subscriptions/$item/resourceGroups/$ResourceGroup/providers/Microsoft.Compute/snapshots"
                 }
-                if ([String]::IsNullOrEmpty($SnapshotName) -eq $false) {
-                    $ArmUriBld.Path="/subscriptions/$item/resourceGroups/$ResourceGroup/providers/Microsoft.Compute/snapshots/$SnapshotName"
-                    $ArmDisk=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json' -ErrorAction Stop
-                    if ($ArmDisk -ne $null) {
-                        Write-Output $ArmDisk
-                    }                    
+                elseif ([String]::IsNullOrEmpty($SnapshotName) -eq $false) {
+                    $ArmUriBld.Path="/subscriptions/$item/resourceGroups/$ResourceGroup/providers/Microsoft.Compute/snapshots/$SnapshotName"                
                 }
-                else
+                $ArmDisks=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
+                if($ArmDisks -ne $null)
                 {
-                    $ArmDisks=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
-                    if($ArmDisks -ne $null)
-                    {
-                        Write-Output $ArmDisks
-                    }                    
-                }
+                    Write-Output $ArmDisks
+                }                
             }
             catch
             {
