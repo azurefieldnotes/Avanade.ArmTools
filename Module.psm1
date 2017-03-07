@@ -4003,18 +4003,11 @@ Function Get-ArmPlatformImagePublisher
         }
         foreach ($item in $SubscriptionId)
         {
-            try
+            $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Compute/locations/$Location/publishers"
+            $ImagePublishers=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json'
+            if($ImagePublishers -ne $null)
             {
-                $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Compute/locations/$Location/publishers"
-                $Usages=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json' -ErrorAction Stop
-                if($Usages -ne $null)
-                {
-                    Write-Output $Usages
-                }
-            }
-            catch
-            {
-                Write-Warning "[Get-ArmPlatformImagePublisher] $ApiEndpoint $item $_"
+                Write-Output $ImagePublishers
             }
         }
 
@@ -4115,16 +4108,10 @@ Function Get-ArmPlatformImagePublisherOffer
         }
         foreach ($ImagePublisher in $PublisherId)
         {
-            try
-            {
-                $ArmUriBld.Path="$ImagePublisher/artifacttypes/vmimage/offers"
-                $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json' -ErrorAction Stop
-                if ($ArmResult -ne $null) {
-                    Write-Output $ArmResult
-                }                
-            }
-            catch {
-                Write-Warning "[Get-ArmPlatformImagePublisherOffer] $ImagePublisher $ApiVersion $_"
+            $ArmUriBld.Path="$ImagePublisher/artifacttypes/vmimage/offers"
+            $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json'
+            if ($ArmResult -ne $null) {
+                Write-Output $ArmResult
             }
         }
     }
@@ -4230,16 +4217,10 @@ Function Get-ArmPlatformImageSku
         }
         foreach ($ImageOffer in $OfferId)
         {
-            try
-            {
-                $ArmUriBld.Path="$ImageOffer/skus"
-                $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json' -ErrorAction Stop
-                if ($ArmResult -ne $null) {
-                    Write-Output $ArmResult
-                }                
-            }
-            catch {
-                Write-Warning "[Get-ArmPlatformImageSku] $ImagePublisher $ApiVersion $_"
+            $ArmUriBld.Path="$ImageOffer/skus"
+            $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json'
+            if ($ArmResult -ne $null) {
+                Write-Output $ArmResult
             }
         }
     }
@@ -4351,16 +4332,10 @@ Function Get-ArmPlatformImageVersion
         }
         foreach ($Sku in $ImageSkuId)
         {
-            try
-            {
-                $ArmUriBld.Path="$Sku/versions"
-                $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json' -ErrorAction Stop
-                if ($ArmResult -ne $null) {
-                    Write-Output $ArmResult
-                }                
-            }
-            catch {
-                Write-Warning "[Get-ArmPlatformImageVersion] $ImagePublisher $ApiVersion $_"
+            $ArmUriBld.Path="$Sku/versions"
+            $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json'
+            if ($ArmResult -ne $null) {
+                Write-Output $ArmResult
             }
         }
     }
