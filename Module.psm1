@@ -1501,15 +1501,11 @@ Function Get-ArmResourceLock
                 $ArmUriBld.Path+="/providers/$ResourceType/$ResourceName"
             }
             $ArmUriBld.Path+="/providers/microsoft.authorization/locks"
-            try
+            $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json'
+            if($ArmResult)
             {
-                $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json'
                 Write-Output $ArmResult
-            }
-            catch
-            {
-                Write-Warning "[Get-ArmResourceLock] Subscription $item $_"
-            }
+            }            
         }
 
     }
@@ -1873,14 +1869,10 @@ Function Get-ArmUsageAggregate
         foreach ($item in $SubscriptionId)
         {
             $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Commerce/UsageAggregates"
-            try
+            $AggregateResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $AuthHeaders -LimitResultPages $LimitResultPages
+            if($AggregateResult -ne $null)
             {
-                $AggregateResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $AuthHeaders -LimitResultPages $LimitResultPages
                 Write-Output $AggregateResult
-            }
-            catch
-            {
-                Write-Warning "[Get-ArmUsageAggregate] Subscription $item $_"
             }
         }
     }
@@ -2247,15 +2239,11 @@ Function Get-ArmDiagnosticSetting
         {
             $ArmUriBld.Path="$item/providers/microsoft.insights/diagnosticSettings/service"
             $ArmUriBld.Query="api-version=$ApiVersion"
-            try
+            Write-Verbose "[Get-ArmDiagnosticSetting] Retrieving Diagnostic Settings for $item"
+            $RequestResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json'
+            if($RequestResult -ne $null)
             {
-                Write-Verbose "[Get-ArmDiagnosticSetting] Retrieving Diagnostic Settings for $item"
-                $RequestResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json' -ErrorAction Continue
                 Write-Output $RequestResult
-            }
-            catch [System.Exception]
-            {
-                Write-Warning "[Get-ArmDiagnosticSetting] Resource $item - $_"
             }
         }
     }
@@ -2360,19 +2348,14 @@ Function Get-ArmEventLog
             {
                 $ArmUriBld.Path="subscriptions/$Id/providers/microsoft.insights/eventtypes/management/values"
             }
-            try
+            if($Top -gt 0)
             {
-                if($Top -gt 0)
-                {
-                    #These pages are 200 entries long
-                    $ResultPages=[System.Math]::Ceiling(($Top/200))
-                }
-                $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json' -LimitResultPages $ResultPages
-                Write-Output $ArmResult
+                #These pages are 200 entries long
+                $ResultPages=[System.Math]::Ceiling(($Top/200))
             }
-            catch
-            {
-                Write-Warning "[Get-ArmEventLog] Subscription $Id $_"
+            $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json' -LimitResultPages $ResultPages
+            if ($ArmResult -ne $null) {
+                Write-Output $ArmResult
             }
         }
     }
@@ -2465,14 +2448,9 @@ Function Get-ArmAdvisorRecommendation
         foreach ($item in $SubscriptionId)
         {
             $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Advisor/recommendations"
-            try
-            {
-                $Recommendations=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
+            $Recommendations=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
+            if ($Recommendations -ne $null) {
                 Write-Output $Recommendations
-            }
-            catch
-            {
-                Write-Warning "$item $_"
             }
         }
     }
@@ -2520,17 +2498,10 @@ Function Get-ArmProviderOperation
         }
         foreach ($item in $ProviderNamespace)
         {
-            try
-            {
-                $ArmUriBld.Path="/providers/Microsoft.Authorization/providerOperations/$Namespace"
-                $Result=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
-                if ($Result -ne $null) {
-                    Write-Output $Result
-                }
-            }
-            catch
-            {
-                Write-Warning "$item $ApiVersion $_"
+            $ArmUriBld.Path="/providers/Microsoft.Authorization/providerOperations/$Namespace"
+            $Result=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
+            if ($Result -ne $null) {
+                Write-Output $Result
             }
         }
     }
@@ -2592,17 +2563,10 @@ Function Get-ArmClassicAdministrator
         }
         foreach ($item in $SubscriptionId)
         {
-            try
-            {
-                $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/classicAdministrators"
-                $Result=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
-                if ($Result -ne $null) {
-                    Write-Output $Result
-                }
-            }
-            catch
-            {
-                Write-Warning "$item $ApiVersion $_"
+            $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/classicAdministrators"
+            $Result=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
+            if ($Result -ne $null) {
+                Write-Output $Result
             }
         }
     }
@@ -2671,22 +2635,16 @@ Function Get-ArmRoleAssignment
         }
         foreach ($item in $SubscriptionId)
         {
-            try
+            $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/roleAssignments"
+            if ([String]::IsNullOrEmpty($RoleName) -eq $false)
             {
-                if ([String]::IsNullOrEmpty($RoleName) -eq $false) {
-                    $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/roleAssignments/$RoleName"
-                    $Result=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Method Get -Headers $Headers -ErrorAction Stop
-                }
-                else {
-                    $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/roleAssignments"
-                    $Result=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
-                }
-
-                Write-Output $Result
+                $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/roleAssignments/$RoleName"
             }
-            catch
+
+            $Result=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
+            if($Result -ne $null)
             {
-                Write-Warning "$item $_"
+                Write-Output $Result
             }
         }
     }
@@ -2755,22 +2713,15 @@ Function Get-ArmRoleDefinition
         }
         foreach ($item in $SubscriptionId)
         {
-            try
+            $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/roleDefinitions" 
+            if ([String]::IsNullOrEmpty($RoleName) -eq $false)
             {
-                if ([String]::IsNullOrEmpty($RoleName) -eq $false) {
-                    $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/roleDefinitions/$DefinitionName"
-                    $Result=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Method Get -Headers $Headers -ErrorAction Stop
-                }
-                else {
-                    $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/roleDefinitions"
-                    $Result=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
-                }
-
-                Write-Output $Result
+                $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/roleDefinitions/$DefinitionName"
             }
-            catch
+            $Result=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
+            if($Result -ne $null)
             {
-                Write-Warning "$item $_"
+                Write-Output $Result
             }
         }
     }
@@ -2839,22 +2790,15 @@ Function Get-ArmPolicyDefinition
         }
         foreach ($item in $SubscriptionId)
         {
-            try
+            $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/policydefinitions"
+            if ([string]::IsNullOrEmpty($DefinitionName) -eq $false)
             {
-
-                if ([string]::IsNullOrEmpty($DefinitionName) -eq $false) {
-                    $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/policydefinitions/$DefinitionName"
-                    $Result=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Method Get -Headers $Headers -ErrorAction Stop
-                }
-                else {
-                    $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/policydefinitions"
-                    $Result=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
-                }
-                Write-Output $Result
+                $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/policydefinitions/$DefinitionName"
             }
-            catch
+            $Result=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
+            if($Result -ne $null)
             {
-                Write-Warning "$item $_"
+                Write-Output $Result
             }
         }
     }
@@ -2932,7 +2876,8 @@ Function Get-ArmPolicyAssignment
                 $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/policyassignments"
             }
             $Result=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
-            if ($Result -ne $null) {
+            if ($Result -ne $null)
+            {
                 Write-Output $Result                    
             }
         }
