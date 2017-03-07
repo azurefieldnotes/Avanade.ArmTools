@@ -112,7 +112,10 @@ function GetResourceTypeApiVersion
         $AccessToken,
         [Parameter(Mandatory=$true)]
         [String]
-        $ResourceType
+        $ResourceType,
+        [Parameter(Mandatory=$false)]
+        [String]
+        $ApiVersion=$Script:DefaultArmApiVersion
     )
 
     #Is the provider type cached??
@@ -135,7 +138,7 @@ function GetResourceTypeApiVersion
     else
     {
         $ApiVersions=Get-ArmResourceTypeApiVersion -SubscriptionId $SubscriptionId -ResourceType $ResourceType `
-            -AccessToken $AccessToken -ApiEndpoint $ApiEndpoint
+            -AccessToken $AccessToken -ApiEndpoint $ApiEndpoint -ApiVersion $ApiVersion
         $Script:SubscriptionProviderApiVersionCache.Add($SubscriptionId,@{$ResourceType=$ApiVersions})
     }
     Write-Output $ApiVersions
@@ -959,7 +962,7 @@ Function Get-ArmResourceType
         $Subscription,
         [Parameter(Mandatory=$true,ParameterSetName='idNamespace')]
         [Parameter(Mandatory=$true,ParameterSetName='objectNamespace')]
-        [ValidatePattern('^[A-Za-z]+.[A-Za-z]+$')]
+        [ValidatePattern('^[A-Za-z]+[\.]+[A-Za-z]+([\.]+[A-Za-z]+)*')]
         [System.String]
         $Namespace,
         [Parameter(Mandatory=$true,ParameterSetName='objectType')]
@@ -1680,7 +1683,11 @@ Function Get-ArmResourceInstance
         [Parameter(Mandatory=$false,ParameterSetName='id')]
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [System.Uri]
-        $ApiEndpoint=$Script:DefaultArmFrontDoor
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [System.String]
+        $ApiVersion=$Script:DefaultArmApiVersion
     )
     BEGIN
     {
@@ -1699,23 +1706,23 @@ Function Get-ArmResourceInstance
             $ResourceData=$ResourceId|ConvertFrom-ArmResourceId
             #Resolve the api version
             $ResourceType="$($ResourceData.Namespace)/$($ResourceData.ResourceType)"
-            $ApiVersions=GetResourceTypeApiVersion -SubscriptionId $ResourceData.SubscriptionId -AccessToken $AccessToken -ResourceType $ResourceType
-            foreach ($ApiVersion in $ApiVersions)
+            $ApiVersions=GetResourceTypeApiVersion -SubscriptionId $ResourceData.SubscriptionId -AccessToken $AccessToken -ResourceType $ResourceType -ApiVersion $ApiVersion
+            foreach ($Version in $ApiVersions)
             {
                 try
                 {
-                    Write-Verbose "Requesting instance $ResourceId with API version $ApiVersion"
+                    Write-Verbose "Requesting instance $ResourceId with API version $Version"
                     $ArmUriBld.Path=$ResourceId
-                    $ArmUriBld.Query="api-version=$ApiVersion"
+                    $ArmUriBld.Query="api-version=$Version"
                     if ($ExpandProperties -ne $null) {
-                        $ArmUriBld.Query="api-version=$ApiVersion&`$expand=$([String]::Join(',',$ExpandProperties))"
+                        $ArmUriBld.Query="api-version=$Version&`$expand=$([String]::Join(',',$ExpandProperties))"
                     }                    
                     $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders -ErrorAction Stop
                     break
                 }
                 catch [System.Exception]
                 {
-                    Write-Warning "[Get-ArmResourceInstance] $ResourceId using api version $ApiVersion - $_"
+                    Write-Warning "[Get-ArmResourceInstance] $ResourceId using api version $Version - $_"
                 }
             }
             if ($ArmResult -ne $null)
@@ -4513,6 +4520,115 @@ Function Get-ArmPlatformImageVersion
             }
             catch {
                 Write-Warning "[Get-ArmPlatformImageVersion] $ImagePublisher $ApiVersion $_"
+            }
+        }
+    }
+    END
+    {
+
+    }
+}
+
+Function Get-ArmBillingInvoice
+{
+    [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
+    param
+    (
+        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
+        [System.String[]]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [System.Object[]]
+        $Subscription,      
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.String]
+        $InvoiceName,      
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.String]
+        $Filter,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.String[]]
+        $Expand,            
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.Int32]
+        $Top,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Switch]
+        $ExpandDownloadUrl,        
+        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
+        [System.String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [System.String]
+        $ApiVersion="2017-02-27-preview" 
+    )
+
+    BEGIN
+    {
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $Headers=@{Authorization="Bearer $($AccessToken)";Accept="application/json";}
+        $ArmQuery="api-version=$ApiVersion"
+    }
+    PROCESS
+    {
+        if ($PSCmdlet.ParameterSetName -eq 'object')
+        {
+            $SubscriptionId=$Subscription|Select-Object -ExpandProperty subscriptionId
+        }
+        foreach ($SubId in $SubscriptionId)
+        {
+            try
+            {
+                if ([string]::IsNullOrEmpty($InvoiceName))
+                {
+                    if ([String]::IsNullOrEmpty($Filter) -eq $false) {
+                        $ArmQuery+="&`$filter=$Filter"
+                    }
+                    if ($Top -gt 0) {
+                        $ArmQuery+="&`$top=$Top"
+                    }
+                    if ($ExpandDownloadUrl.IsPresent) {
+                        if($Expand -notcontains "downloadUrl")
+                        {
+                            $Expand+="downloadUrl"
+                        }
+                    }
+                    if ($Expand -ne $null)
+                    {
+                        $ArmQuery+="&`$expand=$([String]::Join(',',$Expand))"
+                    }                             
+                    $ArmUriBld.Path="subscriptions/$SubId/providers/Microsoft.Billing/invoices"
+                    $ArmUriBld.Query=$ArmQuery
+                    $Invoices=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json' -ValueProperty 'value' -NextLinkProperty 'nextLink'            
+                    if ($Invoices -ne $null) {
+                        Write-Output $Invoices
+                    }
+                }
+                else
+                {
+                    $ArmUriBld.Path="subscriptions/$SubId/providers/Microsoft.Billing/invoices/$InvoiceName"
+                    $ArmUriBld.Query=$ArmQuery
+                    $Invoice=Invoke-RestMethod -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json' -ErrorAction $Stop
+                    if($Invoice -ne $null)
+                    {
+                        Write-Output $Invoice
+                    }
+                }                
+            }
+            catch
+            {
+                Write-Warning "[Get-ArmBillingInvoice] Error retrieving invoice(s) $_"
             }
         }
     }
