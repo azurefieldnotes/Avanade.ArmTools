@@ -2923,22 +2923,17 @@ Function Get-ArmPolicyAssignment
         }
         foreach ($item in $SubscriptionId)
         {
-            try
+            if ([string]::IsNullOrEmpty($AssignmentName) -eq $false)
             {
-
-                if ([string]::IsNullOrEmpty($AssignmentName) -eq $false) {
-                    $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/policyassignments/$AssignmentName"
-                    $Result=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Method Get -Headers $Headers -ErrorAction Stop
-                }
-                else {
-                    $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/policyassignments"
-                    $Result=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
-                }
-                Write-Output $Result
+                $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/policyassignments/$AssignmentName"
             }
-            catch
+            else
             {
-                Write-Warning "$item $_"
+                $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/policyassignments"
+            }
+            $Result=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
+            if ($Result -ne $null) {
+                Write-Output $Result                    
             }
         }
     }
@@ -3006,15 +3001,11 @@ Function Get-ArmComputeUsage
         foreach ($item in $SubscriptionId)
         {
             $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Compute/locations/$Location/usages"
-            try
+            $Usages=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
+            if($Usages -ne $null)
             {
-                $Usages=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
                 Write-Output $Usages
-            }
-            catch
-            {
-                Write-Warning "[Get-ArmComputeUsage] $ApiEndpoint $item $_"
-            }
+            }      
         }
 
     }
@@ -3078,14 +3069,9 @@ Function Get-ArmStorageUsage
         foreach ($item in $SubscriptionId)
         {
             $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Storage/usages"
-            try
-            {
-                $Usages=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
+            $Usages=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers            
+            if ($Usages -ne $null) {
                 Write-Output $Usages
-            }
-            catch
-            {
-                Write-Warning "[Get-ArmStorageUsage] $ApiVersion $item $_"
             }
         }
     }
@@ -3183,22 +3169,14 @@ Function Get-ArmResourceUsage
                 {
                     $ArmUriBld.Query="api-version=$ApiVersion&`$filter=$Filter"
                 }
-                try
+                $Usages=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
+                if($Usages -ne $null)
                 {
-                    $Usages=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
-                    if($Usages -ne $null)
-                    {
-                        Write-Output $Usages
-                        break
-                    }
-                }
-                catch [System.Exception]
-                {
-                    Write-Warning "[Get-ArmResourceUsage] $ResourceId using api version $ApiVersion - $_"
+                    Write-Output $Usages
+                    break
                 }
             }
         }
-
     }
     END
     {
@@ -3271,15 +3249,9 @@ Function Get-ArmQuotaUsage
         }
         foreach ($item in $SubscriptionId)
         {
-            try
-            {
-                $ArmUriBld.Path="subscriptions/$item/providers/$Namespace/locations/$Location/usages"
-                $Result=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json'
-                Write-Output $Result
-            }
-            catch {
-                Write-Warning "[Get-ArmQuotaUsage] $ApiVersion $item $Namespace $Location $_"
-            }
+            $ArmUriBld.Path="subscriptions/$item/providers/$Namespace/locations/$Location/usages"
+            $Result=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json'
+            Write-Output $Result
         }
     }
     END
