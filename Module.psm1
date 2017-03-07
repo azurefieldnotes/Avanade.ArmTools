@@ -1411,7 +1411,6 @@ Function Get-ArmLocation
                     }                    
                 }
             }
-
         }
     }
     END
@@ -3432,14 +3431,9 @@ Function Get-ArmVmSize
         foreach ($item in $SubscriptionId)
         {
             $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Compute/locations/$Location/vmSizes"
-            try
-            {
-                $VmSizes=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
+            $VmSizes=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
+            if ($VmSizes -ne $null) {
                 Write-Output $VmSizes
-            }
-            catch
-            {
-                Write-Warning "[Get-ArmVmSize] $item $ApiVersion $_"
             }
         }
     }
@@ -3510,17 +3504,10 @@ Function Get-ArmTagName
             if ($ExpandTagValues.IsPresent) {
                 $ArmUriBld.Query="`$expand=tagvalues&api-version=$ApiVersion"
             }
-            try
+            $ArmTags=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
+            if($ArmTags -ne $null)
             {
-                $ArmTags=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
-                if($ArmTags -ne $null)
-                {
-                    Write-Output $ArmTags
-                }
-            }
-            catch
-            {
-                Write-Warning "[Get-ArmVmSize] $item $ApiVersion $_"
+                Write-Output $ArmTags
             }
         }
     }
