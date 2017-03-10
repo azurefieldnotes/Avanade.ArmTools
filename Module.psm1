@@ -4424,3 +4424,57 @@ Function Get-ArmBillingInvoice
 
     }
 }
+
+Function Invoke-ArmRequest
+{
+    [CmdletBinding(ConfirmImpact='None')]
+    param
+    (
+        [Parameter(Mandatory=$true)]
+        [uri]
+        $Uri,
+        [Parameter(Mandatory=$false)]
+        [string]
+        $ContentType='application/json',
+        [Parameter(Mandatory=$false)]
+        [System.Object]
+        $Body,
+        [Parameter(Mandatory=$false)]
+        [System.Powershell.Commands.WebRequestMethod]
+        $Method="GET",
+        [Parameter(Mandatory=$true)]
+        [string]
+        $AccessToken,
+        [Parameter(Mandatory=$false)]
+        [IDictionary]
+        $AdditionalHeaders=@{Accept='application/json'},
+        [Parameter(Mandatory=$false)]
+        [Switch]
+        $CollectResults,
+        [Parameter(Mandatory=$false)]
+        [string]
+        $ValueProperty='value',
+        [Parameter(Mandatory=$false)]
+        [String]
+        $NextLinkProperty='nextLink',
+        [Parameter(Mandatory=$false)]
+        [int]
+        $LimitResultPages 
+    )
+    $RequestHeaders=$AdditionalHeaders
+    $RequestHeaders['Authorization']="Bearer $AccessToken"
+    #What is our method...
+    if ($Method -in 'POST','PATCH','DELETE')
+    {
+        #Invoke..evaluate the response
+    }
+    else
+    {
+        #Invoke..evaluate the response
+        #Do we rollup the results?
+        if ($CollectResults) 
+        {
+            
+        }
+    }
+}
