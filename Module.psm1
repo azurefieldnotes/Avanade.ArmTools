@@ -454,24 +454,17 @@ Function Get-ArmWebSite
         }
         foreach ($id in $SubscriptionId)
         {
-            try
+            if ($PSCmdlet.ParameterSetName -in 'objectWithName','idWithName')
             {
-                if ($PSCmdlet.ParameterSetName -in 'objectWithName','idWithName')
-                {
-                    $UriBuilder.Path="/subscriptions/$Id/resourcegroups/$ResourceGroupName/providers/Microsoft.Web/sites/$WebsiteName"
-                    $ArmResult=Invoke-RestMethod -Uri $UriBuilder.Uri -Headers $Headers -ContentType 'application/json'
-                    Write-Output $ArmResult
-                }
-                else
-                {
-                    $UriBuilder.Path="/subscriptions/$Id/providers/Microsoft.Web/sites"
-                    $ArmResult=GetArmODataResult -Uri $UriBuilder.Uri -Headers $Headers -ContentType 'application/json'
-                    Write-Output $ArmResult
-                }
+                $UriBuilder.Path="/subscriptions/$Id/resourcegroups/$ResourceGroupName/providers/Microsoft.Web/sites/$WebsiteName"
             }
-            catch
+            else
             {
-                Write-Warning "[Get-ArmWebSite] Subscription $id $_"
+                $UriBuilder.Path="/subscriptions/$Id/providers/Microsoft.Web/sites"
+            }
+            $ArmResult=GetArmODataResult -Uri $UriBuilder.Uri -Headers $Headers -ContentType 'application/json'
+            if ($ArmResult -ne $null) {
+                Write-Output $ArmResult   
             }
         }
     }
@@ -562,7 +555,10 @@ Function Get-ArmWebSitePublishingCredential
             $UriBuilder.Path="$($item.id)/config/publishingCredentials/list"
             $UriBuilder.Query="api-version=$ApiVersion"
             $CredResult=Invoke-RestMethod -Uri $UriBuilder.Uri -Method Post -ContentType 'application/json' -Headers $Headers
-            Write-Output $CredResult
+            if($CredResult -ne $null)
+            {
+                Write-Output $CredResult
+            }
         }
     }
     END
@@ -607,14 +603,9 @@ Function Get-ArmTenant
             $ArmUriBld=New-Object System.UriBuilder($Script:DefaultArmFrontDoor)
             $ArmUriBld.Path='tenants'
             $ArmUriBld.Query="api-version=$ApiVersion"
-            try
-            {
-                $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $Headers
+            $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $Headers
+            if ($ArmResult -ne $null) {
                 Write-Output $ArmResult
-            }
-            catch
-            {
-                Write-Warning "[Get-ArmTenant] Error retrieving tenant for current token $_"
             }
         }
     }
@@ -657,22 +648,17 @@ Function Get-ArmSubscription
         [Switch]
         $IncludeDetails
     )
-
-    $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+    
+    $AuthHeaders=@{'Authorization'="Bearer $AccessToken";Accept='application/json';}
+    $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)    
     $ArmUriBld.Query="api-version=$ApiVersion&includeDetails=$($IncludeDetails.IsPresent)"
     $ArmUriBld.Path='subscriptions'
     if ([string]::IsNullOrEmpty($SubscriptionId) -eq $false) {
         $ArmUriBld.Path+="/$SubscriptionId"
     }
-    $AuthHeaders=@{'Authorization'="Bearer $AccessToken";Accept='application/json';}
-    $ArmResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders
-    if ([string]::IsNullOrEmpty($SubscriptionId) -eq $false)
-    {
+    $ArmResult=GetArmODataResult -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders
+    if ($ArmResult -ne $null) {
         Write-Output $ArmResult
-    }
-    else
-    {
-        Write-Output $ArmResult.value
     }
 }
 
@@ -898,33 +884,21 @@ Function Get-ArmProvider
         foreach ($item in $SubscriptionId)
         {
             $ArmUriBld.Path="subscriptions/$item/providers"
-            try
+            if([String]::IsNullOrEmpty($Namespace) -eq $false)
             {
-                if([String]::IsNullOrEmpty($Namespace) -eq $false)
+                $ArmUriBld.Path="subscriptions/$item/providers/$Namespace"
+            }
+            else
+            {
+                if ([String]::IsNullOrEmpty($ExpandFilter) -eq $false)
                 {
-                    $ArmUriBld.Path="subscriptions/$item/providers/$Namespace"
-                    $NamespaceResult=Invoke-RestMethod -Uri $ArmUriBld.Uri -ContentType 'application/json' -Headers $AuthHeaders -ErrorAction Stop
-                    if($NamespaceResult -ne $null)
-                    {
-                        Write-Output $NamespaceResult
-                    }
-                }
-                else
-                {
-                    if ([String]::IsNullOrEmpty($ExpandFilter) -eq $false)
-                    {
-                        $ArmUriBld.Query="api-version=$ApiVersion&`$expand=$ExpandFilter"
-                    }
-                    $NamespaceResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json'
-                    if($NamespaceResult -ne $null)
-                    {
-                        Write-Output $NamespaceResult
-                    }
+                    $ArmUriBld.Query="api-version=$ApiVersion&`$expand=$ExpandFilter"
                 }
             }
-            catch
+            $NamespaceResult=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $AuthHeaders -ContentType 'application/json'
+            if($NamespaceResult -ne $null)
             {
-                Write-Warning "[Get-ArmProvider] Subscription $item $_"
+                Write-Output $NamespaceResult
             }
         }
     }
@@ -2639,7 +2613,6 @@ Function Get-ArmRoleAssignment
             {
                 $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/roleAssignments/$RoleName"
             }
-
             $Result=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers
             if($Result -ne $null)
             {
@@ -3195,7 +3168,9 @@ Function Get-ArmQuotaUsage
         {
             $ArmUriBld.Path="subscriptions/$item/providers/$Namespace/locations/$Location/usages"
             $Result=GetArmODataResult -Uri $ArmUriBld.Uri -Headers $Headers -ContentType 'application/json'
-            Write-Output $Result
+            if ($Result -ne $null) {
+                Write-Output $Result
+            }
         }
     }
     END
