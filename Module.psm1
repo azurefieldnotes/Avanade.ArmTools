@@ -201,6 +201,7 @@ Function Invoke-ArmRequest
         [Parameter(Mandatory=$true)]
         [string]
         $AccessToken,
+        [ValidateNotNull()]
         [Parameter(Mandatory=$false)]
         [System.Collections.IDictionary]
         $AdditionalHeaders=@{Accept='application/json'},
@@ -274,14 +275,17 @@ Function Invoke-ArmRequest
             Write-Output $RequestResult
             $TotalItems++ #not sure why I am incrementing..
         }
-
+        #Loop to aggregate OData continutation tokens
         while ($RequestResult.PSobject.Properties.name -match $NextLinkProperty)
         {
             $ResultPages++
             $UriBld=New-Object System.UriBuilder($BaseUri)
-            $NextUri=$RequestResult|Select-Object -ExpandProperty $NextLinkProperty
-            Write-Verbose "[Invoke-ArmRequest] Item Count:$TotalItems Page:$ResultPages More Items available @ $NextUri"
-                
+            $NextUri=$RequestResult|Select-Object -ExpandProperty $NextLinkProperty            
+            if($LimitResultPages -gt 0 -and $ResultPages -eq $LimitResultPages -or [String]::IsNullOrEmpty($NextUri))
+            {
+                break
+            }
+            Write-Verbose "[Invoke-ArmRequest] Item Count:$TotalItems Page:$ResultPages More Items available @ $NextUri"    
             #Is this an absolute or relative uri?
             if($NextUri -match "$BaseUri*")
             {
@@ -296,26 +300,26 @@ Function Invoke-ArmRequest
             }
             try
             {
-                    $RequestParams['Uri']=$UriBld.Uri
-                    Write-Verbose "[Invoke-ArmRequest]$Method $Uri Response:$($Response.StatusCode)-$($Response.StatusDescription) Content-Length:$($Response.RawContentLength)"
-                    $RequestResult=Invoke-Command -ScriptBlock $ContentAction -ArgumentList $Response.Content|ConvertFrom-Json
-                    if ($RequestResult.PSobject.Properties.name -match $ErrorProperty)
-                    {
-                        throw ($RequestResult|Select-Object -ExpandProperty $ErrorProperty)|ConvertTo-Json
-                    }
-                    if ($RequestResult.PSobject.Properties.name -match $ValueProperty)
-                    {
-                        Write-Output ($RequestResult|Select-Object -ExpandProperty $ValueProperty)
-                    }
-                    else
-                    {
-                        Write-Output $RequestResult
-                    }
-                    if($LimitResultPages -gt 0 -and $ResultPages -eq $LimitResultPages)
-                    {
-                        break
-                    }
+                $RequestParams['Uri']=$UriBld.Uri
+                $Response=Invoke-WebRequest @RequestParams -UseBasicParsing -ErrorAction Stop
+                Write-Verbose "[Invoke-ArmRequest]$Method $Uri Response:$($Response.StatusCode)-$($Response.StatusDescription) Content-Length:$($Response.RawContentLength)"
+                $RequestResult=Invoke-Command -ScriptBlock $ContentAction -ArgumentList $Response.Content|ConvertFrom-Json
+                if (-not [String]::IsNullOrEmpty($ErrorProperty) -and  $RequestResult.PSobject.Properties.name -match $ErrorProperty)
+                {
+                    throw ($RequestResult|Select-Object -ExpandProperty $ErrorProperty)|ConvertTo-Json
                 }
+                if ($RequestResult.PSobject.Properties.name -match $ValueProperty)
+                {
+                    $Result=$RequestResult|Select-Object -ExpandProperty $ValueProperty
+                    $TotalItems+=$Result.Count
+                    Write-Output $Result
+                }
+                else
+                {
+                    Write-Output $RequestResult
+                    $TotalItems++ #not sure why I am incrementing..
+                }
+            }
             catch
             {
                     #See if we can unwind an exception from a response
@@ -2610,38 +2614,32 @@ Function Get-ArmUsageAggregate
         [System.String]
         $ApiVersion=$Script:DefaultBillingApiVerion
     )
-
     BEGIN
     {
+        $Headers=@{Accept='application/json';}
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
         if ($PSCmdlet.ParameterSetName -in 'object','explicit')
         {
             if ($Granularity -eq "Hourly")
             {
-                $StartTimeOffset=New-Object System.DateTimeOffset($StartTime.Year,$StartTime.Month,$StartTime.Day,$StartTime.Hour,0,0,0)
-                $EndTimeOffset=New-Object System.DateTimeOffset($EndTime.Year,$EndTime.Month,$EndTime.Day,$StartTime.Hour,0,0,0)
+                $StartTime=New-Object System.DateTime($StartTime.Year,$StartTime.Month,$StartTime.Day,$StartTime.Hour)
+                $EndTime=New-Object System.DateTime($EndTime.Year,$EndTime.Month,$EndTime.Day,$EndTime.Hour)
             }
             else
             {
-                $StartTimeOffset=New-Object System.DateTimeOffset($StartTime.Year,$StartTime.Month,$StartTime.Day,0,0,0,0)
-                $EndTimeOffset=New-Object System.DateTimeOffset($EndTime.Year,$EndTime.Month,$EndTime.Day,0,0,0,0)
+                $StartTime=New-Object System.DateTime($StartTime.Year,$StartTime.Month,$StartTime.Day)
+                $EndTime=New-Object System.DateTime($EndTime.Year,$EndTime.Month,$EndTime.Day)
             }
+            $StartTimeString=$StartTime.ToString('o')
+            $EndTimeString=$EndTime.ToString('o')
         }
         else
         {
-            if ($Granularity -eq "Hourly")
-            {
-                $EndTimeOffset=New-Object System.DateTimeOffset($EndTime.Year,$EndTime.Month,$EndTime.Day,$StartTime.Hour,0,0,0)
-            }
-            else
-            {
-                $EndTimeOffset=New-Object System.DateTimeOffset($EndTime.Year,$EndTime.Month,$EndTime.Day,0,0,0,0)
-            }
+            $StartTimeString=$StartTimeOffset.ToString('o')
+            $EndTimeString=$EndTimeOffset.ToString('o')
         }
-        $Headers=@{Accept='application/json';}
-        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
-        $StartTimeString=[Uri]::EscapeDataString($StartTimeOffset.ToString('o'))
-        $EndTimeString=[Uri]::EscapeDataString($EndTimeOffset.ToString('o'))
-        $ArmUriBld.Query="api-version=$ApiVersion&reportedStartTime=$($StartTimeString)&reportedEndTime=$($EndTimeString)" +
+        $ArmUriBld.Query="api-version=$ApiVersion" + 
+            "&reportedStartTime=$($StartTimeString)&reportedEndTime=$($EndTimeString)" + 
             "&aggregationGranularity=$Granularity&showDetails=$($ShowDetails.IsPresent)"
     }
     PROCESS
@@ -2653,7 +2651,7 @@ Function Get-ArmUsageAggregate
         foreach ($item in $SubscriptionId)
         {
             $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Commerce/UsageAggregates"
-            $AggregateResult=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $AuthHeaders -LimitResultPages $LimitResultPages
+            $AggregateResult=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -LimitResultPages $LimitResultPages
             Write-Output $AggregateResult
         }
     }
