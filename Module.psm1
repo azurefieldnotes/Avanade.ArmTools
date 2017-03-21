@@ -218,9 +218,8 @@ Function Invoke-ArmRequest
     )
     $ResultPages=0
     $TotalItems=0
-    $RequestId=[Guid]::NewGuid().ToString()
     $RequestHeaders=$AdditionalHeaders
-    $RequestHeaders['client-request-id']=$RequestId
+    $RequestHeaders['client-request-id']=[Guid]::NewGuid().ToString()
     $RequestHeaders['User-Agent']="PowerShell $($PSVersionTable.PSVersion.ToString())"
     $RequestHeaders['Authorization']="Bearer $AccessToken"
     $BaseUri="$($Uri.Scheme)://$($Uri.Host)"
@@ -243,10 +242,33 @@ Function Invoke-ArmRequest
     catch
     {
         #See if we can unwind an exception from a response
-        if($_.Exception.Response)
+        if($_.Exception.Response -ne $null)
         {
             $ExceptionResponse=$_.Exception.Response
-            $ErrorMessage="Error: $($ExceptionResponse.Method) $($ExceptionResponse.ResponseUri) Returned $($ExceptionResponse.StatusCode)"
+            $ErrorStream=$ExceptionResponse.GetResponseStream()
+            $ErrorStream.Position=0
+            $StreamReader = New-Object System.IO.StreamReader($ErrorStream)       
+            try
+            {
+                $ErrorContent=$StreamReader.ReadToEnd()
+                $StreamReader.Close()
+                if(-not [String]::IsNullOrEmpty($ErrorContent))
+                {
+                    $ErrorObject=$ErrorContent|ConvertFrom-Json
+                    if (-not [String]::IsNullOrEmpty($ErrorProperty) -and  $ErrorObject.PSobject.Properties.name -match $ErrorProperty)
+                    {
+                        $ErrorContent=($ErrorObject|Select-Object -ExpandProperty $ErrorProperty)|ConvertTo-Json
+                    }
+                }
+            }
+            catch
+            {
+            }
+            finally
+            {
+                $StreamReader.Close()
+            }
+            $ErrorMessage="Error: $($ExceptionResponse.Method) $($ExceptionResponse.ResponseUri) Returned $($ExceptionResponse.StatusCode) $ErrorContent"
         }
         else
         {
@@ -258,10 +280,6 @@ Function Invoke-ArmRequest
     #Should never get here null
     if($RequestResult -ne $null)
     {
-        if (-not [String]::IsNullOrEmpty($ErrorProperty) -and  $RequestResult.PSobject.Properties.name -match $ErrorProperty)
-        {
-            throw ($RequestResult|Select-Object -ExpandProperty $ErrorProperty)|ConvertTo-Json
-        }
         if ($RequestResult.PSobject.Properties.name -match $ValueProperty)
         {
             $Result=$RequestResult|Select-Object -ExpandProperty $ValueProperty
@@ -302,10 +320,6 @@ Function Invoke-ArmRequest
                 $Response=Invoke-WebRequest @RequestParams -UseBasicParsing -ErrorAction Stop
                 Write-Verbose "[Invoke-ArmRequest]$Method $Uri Response:$($Response.StatusCode)-$($Response.StatusDescription) Content-Length:$($Response.RawContentLength)"
                 $RequestResult=Invoke-Command -ScriptBlock $ContentAction -ArgumentList $Response.Content|ConvertFrom-Json
-                if (-not [String]::IsNullOrEmpty($ErrorProperty) -and  $RequestResult.PSobject.Properties.name -match $ErrorProperty)
-                {
-                    throw ($RequestResult|Select-Object -ExpandProperty $ErrorProperty)|ConvertTo-Json
-                }
                 if ($RequestResult.PSobject.Properties.name -match $ValueProperty)
                 {
                     $Result=$RequestResult|Select-Object -ExpandProperty $ValueProperty
@@ -320,19 +334,42 @@ Function Invoke-ArmRequest
             }
             catch
             {
-                    #See if we can unwind an exception from a response
-                    if($_.Exception.Response)
+                #See if we can unwind an exception from a response
+                if($_.Exception.Response -ne $null)
+                {
+                    $ExceptionResponse=$_.Exception.Response
+                    $ErrorStream=$ExceptionResponse.GetResponseStream()
+                    $ErrorStream.Position=0
+                    $StreamReader = New-Object System.IO.StreamReader($ErrorStream)       
+                    try
                     {
-                        $ExceptionResponse=$_.Exception.Response
-                        $ErrorMessage="Error: $($ExceptionResponse.Method) $($ExceptionResponse.ResponseUri) Returned $($ExceptionResponse.StatusCode) $($ExceptionResponse.StatusDescription)"
+                        $ErrorContent=$StreamReader.ReadToEnd()
+                        $StreamReader.Close()
+                        if(-not [String]::IsNullOrEmpty($ErrorContent))
+                        {
+                            $ErrorObject=$ErrorContent|ConvertFrom-Json
+                            if (-not [String]::IsNullOrEmpty($ErrorProperty) -and  $ErrorObject.PSobject.Properties.name -match $ErrorProperty)
+                            {
+                                $ErrorContent=($ErrorObject|Select-Object -ExpandProperty $ErrorProperty)|ConvertTo-Json
+                            }
+                        }
                     }
-                    else
+                    catch
                     {
-                        $ErrorMessage="An error occurred $_"
                     }
-                    Write-Verbose "[Invoke-ArmRequest] $ErrorMessage"
-                    throw $ErrorMessage
+                    finally
+                    {
+                        $StreamReader.Close()
+                    }
+                    $ErrorMessage="Error: $($ExceptionResponse.Method) $($ExceptionResponse.ResponseUri) Returned $($ExceptionResponse.StatusCode) $ErrorContent"
                 }
+                else
+                {
+                    $ErrorMessage="An error occurred $_"
+                }
+                Write-Verbose "[Invoke-ArmRequest] $ErrorMessage"
+                throw $ErrorMessage
+            }
         }
     }
 }
@@ -423,7 +460,7 @@ Function Get-ArmTenant
             $ArmUriBld=New-Object System.UriBuilder($Script:DefaultArmFrontDoor)
             $ArmUriBld.Path='tenants'
             $ArmUriBld.Query="api-version=$ApiVersion"
-            $ArmResult=Invoke-ArmRequest -Uri $ArmUriBld.Uri -ContentType 'application/json' -AccessToken $AccessToken -AddtionalHeaders $Headers
+            $ArmResult=Invoke-ArmRequest -Uri $ArmUriBld.Uri -ContentType 'application/json' -AccessToken $token -AdditionalHeaders $Headers
             if ($ArmResult -ne $null) {
                 Write-Output $ArmResult
             }
@@ -2458,7 +2495,7 @@ Function Get-ArmRateCard
         $DesiredRegion=New-Object System.Globalization.RegionInfo($RegionInfo)
 
         $ArmUriBld.Query="api-version=$ApiVersion&`$filter=OfferDurableId eq '$OfferDurableId' " +
-            "and Currency eq '$($DesiredRegion.ISOCurrencySymbol)'" +
+            "and Currency eq '$($DesiredRegion.ISOCurrencySymbol)' " +
             "and Locale eq '$Locale' and RegionInfo eq '$RegionInfo'"
     }
     PROCESS
