@@ -115,7 +115,6 @@ Function ConvertFrom-ArmResourceId
     )
     BEGIN
     {
-
     }
     PROCESS
     {
@@ -155,7 +154,6 @@ Function ConvertFrom-ArmResourceId
     }
     END
     {
-
     }
 }
 
@@ -376,7 +374,6 @@ Function Get-ArmSubscription
         [Switch]
         $IncludeDetails
     )
-    
     $Headers=@{Accept='application/json';}
     $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)    
     $ArmUriBld.Query="api-version=$ApiVersion&includeDetails=$($IncludeDetails.IsPresent)"
@@ -434,7 +431,6 @@ Function Get-ArmTenant
     }
     END
     {
-
     }
 }
 
@@ -482,7 +478,6 @@ Function Get-ArmResourceGroup
         [System.String]
         $ApiVersion=$Script:DefaultArmApiVersion
     )
-
     BEGIN
     {
         $Headers=@{'Accept'="application/json"}
@@ -518,7 +513,6 @@ Function Get-ArmResourceGroup
     }
     END
     {
-
     }
 }
 
@@ -592,7 +586,6 @@ Function Get-ArmResource
         [System.String]
         $ApiVersion=$Script:DefaultArmApiVersion
     )
-
     BEGIN
     {
         $Headers=@{Accept='application/json';}
@@ -645,7 +638,6 @@ Function Get-ArmResource
     }
     END
     {
-
     }
 }
 
@@ -754,7 +746,6 @@ Function Get-ArmResourceInstance
     }
     END
     {
-
     }
 }
 
@@ -803,7 +794,6 @@ Function Get-ArmLocation
         [System.String]
         $ApiVersion=$Script:DefaultArmApiVersion
     )
-
     BEGIN
     {
         $Headers=@{'Accept'="application/json"}
@@ -870,7 +860,6 @@ Function Get-ArmLocation
     }
     END
     {
-
     }
 }
 
@@ -923,7 +912,6 @@ Function Get-ArmProvider
         [String]
         $ExpandFilter
     )
-
     BEGIN
     {
         $Headers=@{Accept='application/json';}
@@ -962,7 +950,6 @@ Function Get-ArmProvider
     }
     END
     {
-
     }
 }
 
@@ -1233,7 +1220,6 @@ Function Get-ArmResourceType
         [System.String]
         $ApiVersion=$Script:DefaultArmApiVersion
     )
-
     BEGIN
     {
         $Headers=@{Accept='application/json'}
@@ -1319,7 +1305,6 @@ Function Get-ArmResourceType
     }
     END
     {
-
     }
 }
 
@@ -1367,10 +1352,8 @@ Function Get-ArmResourceTypeApiVersion
         [System.String]
         $ApiVersion=$Script:DefaultArmApiVersion
     )
-
     BEGIN
     {
-
     }
     PROCESS
     {
@@ -1387,7 +1370,6 @@ Function Get-ArmResourceTypeApiVersion
     }
     END
     {
-
     }
 }
 
@@ -1435,10 +1417,8 @@ Function Get-ArmResourceTypeLocation
         [System.String]
         $ApiVersion=$Script:DefaultArmApiVersion
     )
-
     BEGIN
     {
-
     }
     PROCESS
     {
@@ -1455,7 +1435,6 @@ Function Get-ArmResourceTypeLocation
     }
     END
     {
-
     }
 }
 
@@ -1670,7 +1649,6 @@ Function Get-ArmProviderOperation
     }
     END
     {
-
     }
 }
 
@@ -1716,7 +1694,6 @@ Function Get-ArmTagName
         [Switch]
         $ExpandTagValues
     )
-
     BEGIN
     {
         $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
@@ -1741,7 +1718,6 @@ Function Get-ArmTagName
     }
     END
     {
-
     }
 }
 
@@ -1795,7 +1771,6 @@ Function Get-ArmDeployment
         [Int32]
         $Top
     )
-
     $Headers=@{Accept="application/json";}
     $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
     $UriQuery="api-version=$ApiVersion"
@@ -1872,7 +1847,6 @@ Function Get-ArmDeploymentOperation
         [Int32]
         $Top
     )
-
     $Headers=@{Accept="application/json";}
     $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
     $ArmUriBld.Path="/subscriptions/$SubscriptionId/resourcegroups/$ResourceGroupName/providers/Microsoft.Resources/deployments/$DeploymentName/operations"
@@ -1931,7 +1905,6 @@ Function Get-ArmAdvisorRecommendation
         [System.String]
         $ApiVersion="2016-05-09-preview"
     )
-
     BEGIN
     {
         $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
@@ -1953,7 +1926,6 @@ Function Get-ArmAdvisorRecommendation
     }
     END
     {
-
     }
 }
 
@@ -2018,7 +1990,6 @@ Function Get-ArmClassicAdministrator
     }
     END
     {
-
     }
 }
 
@@ -2056,7 +2027,6 @@ Function Get-ArmDiagnosticSetting
         [System.String]
         $ApiVersion="2015-07-01"
     )
-
     BEGIN
     {
         $Headers=@{Accept='application/json'}
@@ -2075,9 +2045,7 @@ Function Get-ArmDiagnosticSetting
     }
     END
     {
-
     }
-
 }
 
 <#
@@ -2099,7 +2067,6 @@ Function Get-ArmEventCategory
         [System.String]
         $ApiVersion='2015-04-01'
     )
-
     $Headers=@{Accept='application/json'}
     $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
     $ArmUriBld.Path="providers/microsoft.insights/eventcategories"
@@ -2162,7 +2129,6 @@ Function Get-ArmEventLog
         [System.String]
         $ApiVersion=$Script:DefaultEventLogApiVersion
     )
-
     BEGIN
     {
         $Headers=@{Accept='application/json'}
@@ -2213,7 +2179,6 @@ Function Get-ArmEventLog
     }
     END
     {
-
     }
 }
 
@@ -2257,7 +2222,6 @@ Function Get-ArmResourceMetric
         [System.String]
         $ClassicApiVersion='2014-04-01'
     )
-
     BEGIN
     {
         $Headers=@{Accept='application/json'}
@@ -2314,7 +2278,6 @@ Function Get-ArmResourceMetric
     }
     END
     {
-
     }
 }
 
@@ -2353,7 +2316,6 @@ Function Get-ArmResourceMetricDefinition
         [System.String]
         $ClassicApiVersion=$Script:ClassicMonitorApiVersion
     )
-
     BEGIN
     {
         $Headers=@{Accept='application/json'}
@@ -2393,7 +2355,6 @@ Function Get-ArmResourceMetricDefinition
     }
     END
     {
-
     }
 }
 
@@ -2455,7 +2416,6 @@ Function Get-ArmRateCard
         [System.String]
         $ApiVersion=$Script:DefaultBillingApiVerion
     )
-
     DynamicParam
     {
 
@@ -2517,7 +2477,6 @@ Function Get-ArmRateCard
     }
     END
     {
-
     }
 }
 
@@ -2657,7 +2616,6 @@ Function Get-ArmUsageAggregate
     }
     END
     {
-
     }
 }
 
@@ -2763,7 +2721,6 @@ Function Get-ArmBillingInvoice
     }
     END
     {
-
     }
 }
 #endregion
@@ -2814,7 +2771,6 @@ Function Get-ArmPolicyAssignment
         [System.String]
         $ApiVersion="2016-12-01"
     )
-
     BEGIN
     {
         $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
@@ -2843,7 +2799,6 @@ Function Get-ArmPolicyAssignment
     }
     END
     {
-
     }
 }
 
@@ -2891,7 +2846,6 @@ Function Get-ArmPolicyDefinition
         [System.String]
         $ApiVersion="2016-12-01"
     )
-
     BEGIN
     {
         $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
@@ -2917,7 +2871,6 @@ Function Get-ArmPolicyDefinition
     }
     END
     {
-
     }
 }
 
@@ -2965,7 +2918,6 @@ Function Get-ArmRoleAssignment
         [System.String]
         $ApiVersion="2016-07-01"
     )
-
     BEGIN
     {
         $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
@@ -2991,7 +2943,6 @@ Function Get-ArmRoleAssignment
     }
     END
     {
-
     }
 }
 
@@ -3051,7 +3002,6 @@ Function Get-ArmResourceLock
         [System.String]
         $ApiVersion='2015-01-01'
     )
-
     BEGIN
     {
         $Headers=@{Accept='application/json';}
@@ -3083,7 +3033,6 @@ Function Get-ArmResourceLock
     }
     END
     {
-
     }
 }
 
@@ -3131,7 +3080,6 @@ Function Get-ArmRoleDefinition
         [System.String]
         $ApiVersion="2016-07-01"
     )
-
     BEGIN
     {
         $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
@@ -3157,7 +3105,6 @@ Function Get-ArmRoleDefinition
     }
     END
     {
-
     }
 }
 
@@ -3215,7 +3162,6 @@ Function Get-ArmVmDiskImage
         [System.String]
         $ApiVersion="2016-04-30-preview"
     )
-
     BEGIN
     {
         if ([String]::IsNullOrEmpty($ImageName) -eq $false -and [string]::IsNullOrEmpty($ResourceGroup))
@@ -3247,7 +3193,6 @@ Function Get-ArmVmDiskImage
     }
     END
     {
-
     }
 }
 
@@ -3301,7 +3246,6 @@ Function Get-ArmVmManagedDisk
         [System.String]
         $ApiVersion="2016-04-30-preview"
     )
-
     BEGIN
     {
         if ([String]::IsNullOrEmpty($DiskName) -eq $false -and [string]::IsNullOrEmpty($ResourceGroup))
@@ -3333,7 +3277,6 @@ Function Get-ArmVmManagedDisk
     }
     END
     {
-
     }
 }
 
@@ -3402,7 +3345,6 @@ Function Get-ArmVmSize
     }
     END
     {
-
     }
 }
 
@@ -3456,7 +3398,6 @@ Function Get-ArmVmSnapshot
         [System.String]
         $ApiVersion="2016-04-30-preview"
     )
-
     BEGIN
     {
         if ([String]::IsNullOrEmpty($SnapshotName) -eq $false -and [string]::IsNullOrEmpty($ResourceGroup))
@@ -3488,7 +3429,6 @@ Function Get-ArmVmSnapshot
     }
     END
     {
-
     }
 }
 
@@ -3550,7 +3490,6 @@ Function Get-ArmWebSite
         [System.String]
         $ApiVersion=$Script:DefaultWebsiteApiVersion
     )
-
     BEGIN
     {
         $Headers=@{'Accept'='application/json';}
@@ -3581,7 +3520,6 @@ Function Get-ArmWebSite
     }
     END
     {
-
     }
 }
 
@@ -3643,7 +3581,6 @@ Function Get-ArmWebSitePublishingCredential
         [System.String]
         $ApiVersion=$Script:DefaultWebsiteApiVersion
     )
-
     BEGIN
     {
         $Headers=@{'Accept'='application/json';}
@@ -3674,7 +3611,6 @@ Function Get-ArmWebSitePublishingCredential
     }
     END
     {
-
     }
 }
 
@@ -3720,7 +3656,6 @@ Function Get-ArmStorageUsage
         [System.String]
         $ApiVersion="2016-12-01"
     )
-
     BEGIN
     {
         $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
@@ -3742,7 +3677,6 @@ Function Get-ArmStorageUsage
     }
     END
     {
-
     }
 }
 
@@ -3788,7 +3722,6 @@ Function Get-ArmComputeUsage
         [System.String]
         $ApiVersion="2017-03-30"
     )
-
     BEGIN
     {
         $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
@@ -3811,7 +3744,6 @@ Function Get-ArmComputeUsage
     }
     END
     {
-
     }
 }
 
@@ -3887,7 +3819,6 @@ Function Get-ArmQuotaUsage
     }
     END
     {
-
     }
 }
 
@@ -3945,7 +3876,6 @@ Function Get-ArmResourceUsage
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor
     )
-
     BEGIN
     {
         if ($PSCmdlet.ParameterSetName -eq 'datetime') {
@@ -4011,7 +3941,6 @@ Function Get-ArmResourceUsage
     }
     END
     {
-
     }
 }
 
@@ -4085,7 +4014,6 @@ Function Get-ArmPlatformImagePublisher
     }
     END
     {
-
     }
 }
 
@@ -4185,7 +4113,6 @@ Function Get-ArmPlatformImagePublisherOffer
     }
     END
     {
-
     }
 }
 
@@ -4291,7 +4218,6 @@ Function Get-ArmPlatformImageSku
     }
     END
     {
-
     }
 }
 
@@ -4403,7 +4329,6 @@ Function Get-ArmPlatformImageVersion
     }
     END
     {
-
     }
 }
 
