@@ -1566,7 +1566,7 @@ Function Get-ArmFeature
             }
             try
             {
-                $ArmResult=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $AuthHeaders -ContentType 'application/json'
+                $ArmResult=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
                 Write-Output $ArmResult                
             }
             catch {
