@@ -666,11 +666,14 @@ Function Get-ArmResource
                     $ArmUriBld.Path+="/resourceGroups/$ResourceGroup"
                 }                   
             }
-            $ArmResult=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
-            if($ArmResult -ne $null)
+            try
             {
-                Write-Output $ArmResult
-            } 
+                $ArmResult=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
+                Write-Output $ArmResult              
+            }
+            catch {
+                Write-Warning "[Get-ArmResource] $item $_"    
+            }
         }
     }
     END
@@ -778,7 +781,9 @@ Function Get-ArmResourceInstance
                     Write-Warning "[Get-ArmResourceInstance] $ResourceId using api version $Version - $_"
                 }
             }
-            Write-Output $ArmResult
+            if ($ArmResult -ne $null) {
+                Write-Output $ArmResult
+            }
         }
     }
     END
@@ -871,26 +876,32 @@ Function Get-ArmLocation
             }
             foreach ($item in $SubscriptionId)
             {
+                try
+                {
                     $ArmUriBld.Path="subscriptions/$item/locations"
                     $ArmResult=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
                     if ($ArmResult -ne $null)
                     {
-                    if([String]::IsNullOrEmpty($Location) -eq $false)
-                    {
-                        $ArmLocation=$ArmResult|Where-Object{$_.name -eq $Location -or $_.displayName -eq $Location}|Select-Object -First 1
-                        if($ArmLocation -ne $null)
+                        if([String]::IsNullOrEmpty($Location) -eq $false)
                         {
-                            Write-Output $ArmLocation
+                            $ArmLocation=$ArmResult|Where-Object{$_.name -eq $Location -or $_.displayName -eq $Location}|Select-Object -First 1
+                            if($ArmLocation -ne $null)
+                            {
+                                Write-Output $ArmLocation
+                            }
+                            else
+                            {
+                                Write-Warning "[Get-ArmLocation] There is no location $Location available"
+                            }
                         }
                         else
                         {
-                            Write-Warning "[Get-ArmLocation] There is no location $Location available"
+                            Write-Output $ArmResult
                         }
-                    }
-                    else
-                    {
-                        Write-Output $ArmResult
                     }                    
+                }
+                catch {
+                    Write-Warning "[Get-ArmLocation] $item $_"
                 }
             }
         }
@@ -978,10 +989,16 @@ Function Get-ArmProvider
                     $ArmUriBld.Query="api-version=$ApiVersion&`$expand=$ExpandFilter"
                 }
             }
-            $NamespaceResult=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
-            if($NamespaceResult -ne $null)
+            try
             {
-                Write-Output $NamespaceResult
+                $NamespaceResult=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
+                if($NamespaceResult -ne $null)
+                {
+                    Write-Output $NamespaceResult
+                }                
+            }
+            catch {
+                Write-Warning "[Get-ArmProvider] $item $_"    
             }
         }
     }
@@ -1547,8 +1564,14 @@ Function Get-ArmFeature
             {
                 $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Features/providers/$Namespace/features/$FeatureName"
             }
-            $ArmResult=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $AuthHeaders -ContentType 'application/json'
-            Write-Output $ArmResult
+            try
+            {
+                $ArmResult=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $AuthHeaders -ContentType 'application/json'
+                Write-Output $ArmResult                
+            }
+            catch {
+                Write-Warning "[Get-ArmFeature] $item $_"    
+            }
         }
     }
     END
@@ -1749,8 +1772,15 @@ Function Get-ArmTagName
             if ($ExpandTagValues.IsPresent) {
                 $ArmUriBld.Query="`$expand=tagvalues&api-version=$ApiVersion"
             }
-            $ArmTags=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
-            Write-Output $ArmTags
+            try
+            {
+                $ArmTags=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
+                Write-Output $ArmTags
+            }
+            catch
+            {
+                Write-Warning "[Get-ArmTagName] $item $_"
+            }
         }
     }
     END
@@ -1956,9 +1986,15 @@ Function Get-ArmAdvisorRecommendation
         }
         foreach ($item in $SubscriptionId)
         {
-            $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Advisor/recommendations"
-            $Recommendations=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
-            Write-Output $Recommendations
+            try
+            {
+                $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Advisor/recommendations"
+                $Recommendations=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
+                Write-Output $Recommendations                
+            }
+            catch {
+                Write-Warning "[Get-ArmAdvisorRecommendation] $item $_"    
+            }
         }
     }
     END
@@ -2018,10 +2054,16 @@ Function Get-ArmClassicAdministrator
         }
         foreach ($item in $SubscriptionId)
         {
-            $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/classicAdministrators"
-            $Result=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AdditionalHeaders $Headers -AccessToken $AccessToken -ContentType $ContentType
-            if ($Result -ne $null) {
-                Write-Output $Result
+            try
+            {
+                $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/classicAdministrators"
+                $Result=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AdditionalHeaders $Headers -AccessToken $AccessToken -ContentType $ContentType
+                if ($Result -ne $null) {
+                    Write-Output $Result
+                }                
+            }
+            catch {
+                Write-Warning "[Get-ArmClassicAdministrator] $item $_"
             }
         }
     }
@@ -2076,8 +2118,14 @@ Function Get-ArmDiagnosticSetting
         {
             Write-Verbose "[Get-ArmDiagnosticSetting] Retrieving Diagnostic Settings for $item"
             $ArmUriBld.Path="$item/providers/microsoft.insights/diagnosticSettings/service"
-            $RequestResult=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $AuthHeaders -ContentType 'application/json'
-            Write-Output $RequestResult
+            try
+            {
+                $RequestResult=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $AuthHeaders -ContentType 'application/json'
+                Write-Output $RequestResult                
+            }
+            catch {
+                Write-Warning "[Get-ArmDiagnosticSetting] $item $_"
+            }
         }
     }
     END
@@ -2210,8 +2258,14 @@ Function Get-ArmEventLog
                 #These pages are 200 entries long
                 $ResultPages=[System.Math]::Ceiling(($Top/200))
             }
-            $ArmResult=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AdditionalHeaders $Headers -ContentType 'application/json' -LimitResultPages $ResultPages
-            Write-Output $ArmResult
+            try
+            {
+                $ArmResult=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AdditionalHeaders $Headers -ContentType 'application/json' -LimitResultPages $ResultPages
+                Write-Output $ArmResult                
+            }
+            catch {
+                Write-Warning "[Get-ArmEventLog] $Id $_"    
+            }
         }
     }
     END
@@ -2506,10 +2560,17 @@ Function Get-ArmRateCard
         }
         foreach ($item in $SubscriptionId)
         {
-            Write-Verbose "[Get-ArmRateCard] Subscription:$item OfferDurableId:$OfferDurableId Locale:$Locale Currency:$($DesiredRegion.ISOCurrencySymbol)"
-            $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Commerce/RateCard"
-            $Result=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
-            Write-Output $Result
+            try
+            {
+                Write-Verbose "[Get-ArmRateCard] Subscription:$item OfferDurableId:$OfferDurableId Locale:$Locale Currency:$($DesiredRegion.ISOCurrencySymbol)"
+                $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Commerce/RateCard"
+                $Result=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
+                Write-Output $Result                
+            }
+            catch
+            {
+                Write-Warning "[Get-ArmRateCard] $item $_"    
+            }
         }
     }
     END
@@ -2646,9 +2707,16 @@ Function Get-ArmUsageAggregate
         }
         foreach ($item in $SubscriptionId)
         {
-            $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Commerce/UsageAggregates"
-            $AggregateResult=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -LimitResultPages $LimitResultPages
-            Write-Output $AggregateResult
+            try
+            {
+                $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Commerce/UsageAggregates"
+                $AggregateResult=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -LimitResultPages $LimitResultPages
+                Write-Output $AggregateResult                
+            }
+            catch
+            {
+                Write-Warning "[Get-ArmUsageAggregate] $item $_"
+            }
         }
     }
     END
@@ -2752,7 +2820,7 @@ Function Get-ArmBillingInvoice
             }
             catch
             {
-                Write-Warning "[Get-ArmBillingInvoice] Error retrieving invoice(s) $_"
+                Write-Warning "[Get-ArmBillingInvoice] Error retrieving invoice(s) $SubId $_"
             }
         }
     }
@@ -2822,16 +2890,23 @@ Function Get-ArmPolicyAssignment
         }
         foreach ($item in $SubscriptionId)
         {
-            if ([string]::IsNullOrEmpty($AssignmentName) -eq $false)
+            try
             {
-                $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/policyassignments/$AssignmentName"
+                if ([string]::IsNullOrEmpty($AssignmentName) -eq $false)
+                {
+                    $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/policyassignments/$AssignmentName"
+                }
+                else
+                {
+                    $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/policyassignments"
+                }
+                $Result=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
+                Write-Output $Result                
             }
-            else
+            catch
             {
-                $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/policyassignments"
+                Write-Warning "[Get-ArmPolicyAssignment] $item $_"    
             }
-            $Result=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
-            Write-Output $Result
         }
     }
     END
@@ -2897,13 +2972,20 @@ Function Get-ArmPolicyDefinition
         }
         foreach ($item in $SubscriptionId)
         {
-            $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/policydefinitions"
-            if ([string]::IsNullOrEmpty($DefinitionName) -eq $false)
+            try
             {
-                $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/policydefinitions/$DefinitionName"
+                $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/policydefinitions"
+                if ([string]::IsNullOrEmpty($DefinitionName) -eq $false)
+                {
+                    $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/policydefinitions/$DefinitionName"
+                }
+                $Result=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
+                Write-Output $Result                
             }
-            $Result=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
-            Write-Output $Result
+            catch
+            {
+                 Write-Warning "[Get-ArmPolicyDefinition] $item $_"           
+            }
         }
     }
     END
@@ -2969,13 +3051,20 @@ Function Get-ArmRoleAssignment
         }
         foreach ($item in $SubscriptionId)
         {
-            $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/roleAssignments"
-            if ([String]::IsNullOrEmpty($RoleName) -eq $false)
+            try
             {
-                $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/roleAssignments/$RoleName"
+                $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/roleAssignments"
+                if ([String]::IsNullOrEmpty($RoleName) -eq $false)
+                {
+                    $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/roleAssignments/$RoleName"
+                }
+                $Result=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
+                Write-Output $Result                
             }
-            $Result=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
-            Write-Output $Result
+            catch
+            {
+                Write-Warning "[Get-ArmRoleAssignment] $item $_"
+            }
         }
     }
     END
@@ -3062,9 +3151,15 @@ Function Get-ArmResourceLock
             {
                 $ArmUriBld.Path+="/providers/$ResourceType/$ResourceName"
             }
-            $ArmUriBld.Path+="/providers/microsoft.authorization/locks"
-            $ArmResult=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AdditionalHeaders $Headers -ContentType 'application/json' -AccessToken $AccessToken
-            Write-Output $ArmResult         
+            try
+            {
+                $ArmUriBld.Path+="/providers/microsoft.authorization/locks"
+                $ArmResult=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AdditionalHeaders $Headers -ContentType 'application/json' -AccessToken $AccessToken
+                Write-Output $ArmResult
+            }
+            catch {
+                Write-Warning "[Get-ArmResourceLock] $item $_"
+            }    
         }
 
     }
@@ -3136,8 +3231,15 @@ Function Get-ArmRoleDefinition
             {
                 $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Authorization/roleDefinitions/$DefinitionName"
             }
-            $Result=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AdditionalHeaders $Headers -AccessToken $AccessToken
-            Write-Output $Result
+            try
+            {
+                $Result=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AdditionalHeaders $Headers -AccessToken $AccessToken
+                Write-Output $Result                
+            }
+            catch
+            {
+                Write-Warning "[Get-ArmRoleDefinition] $item $_"    
+            }
         }
     }
     END
@@ -3224,8 +3326,13 @@ Function Get-ArmVmDiskImage
             if ([String]::IsNullOrEmpty($ImageName) -eq $false) {
                 $ArmUriBld.Path="/subscriptions/$item/resourceGroups/$ResourceGroup/providers/Microsoft.Compute/images/$ImageName"
             }
-            $ArmDisks=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AdditionalHeaders $Headers -AccessToken $AccessToken -ContentType 'application/json'
-            Write-Output $ArmDisks
+            try {
+                $ArmDisks=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AdditionalHeaders $Headers -AccessToken $AccessToken -ContentType 'application/json'
+                Write-Output $ArmDisks
+            }
+            catch {
+                Write-Warning "[Get-ArmVmDiskImage] $item $_"
+            }
         }
     }
     END
@@ -3308,8 +3415,14 @@ Function Get-ArmVmManagedDisk
             if ([String]::IsNullOrEmpty($DiskName) -eq $false) {
                 $ArmUriBld.Path="/subscriptions/$item/resourceGroups/$ResourceGroup/providers/Microsoft.Compute/disks/$DiskName"             
             }
-            $ArmDisks=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
-            Write-Output $ArmDisks
+            try
+            {
+                $ArmDisks=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
+                Write-Output $ArmDisks                
+            }
+            catch {
+                Write-Warning "[Get-ArmVmManagedDisk] $item $_"    
+            }
         }
     }
     END
@@ -3375,9 +3488,15 @@ Function Get-ArmVmSize
         }
         foreach ($item in $SubscriptionId)
         {
-            $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Compute/locations/$Location/vmSizes"
-            $VmSizes=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
-            Write-Output $VmSizes
+            try
+            {
+                $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Compute/locations/$Location/vmSizes"
+                $VmSizes=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
+                Write-Output $VmSizes                
+            }
+            catch {
+                Write-Warning "[Get-ArmVmSize] $item $_"
+            }
         }
     }
     END
@@ -3460,8 +3579,14 @@ Function Get-ArmVmSnapshot
             elseif ([String]::IsNullOrEmpty($SnapshotName) -eq $false) {
                 $ArmUriBld.Path="/subscriptions/$item/resourceGroups/$ResourceGroup/providers/Microsoft.Compute/snapshots/$SnapshotName"                
             }
-            $ArmDisks=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
-            Write-Output $ArmDisks
+            try
+            {
+                $ArmDisks=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
+                Write-Output $ArmDisks                
+            }
+            catch {
+                Write-Warning "[Get-ArmVmSnapshot] $item $_"
+            }
         }
     }
     END
@@ -3549,9 +3674,15 @@ Function Get-ArmWebSite
             {
                 $UriBuilder.Path="/subscriptions/$Id/providers/Microsoft.Web/sites"
             }
-            $ArmResult=Invoke-ArmRequest -Uri $UriBuilder.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
-            if ($ArmResult -ne $null) {
-                Write-Output $ArmResult   
+            try
+            {
+                $ArmResult=Invoke-ArmRequest -Uri $UriBuilder.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
+                if ($ArmResult -ne $null) {
+                    Write-Output $ArmResult   
+                }                
+            }
+            catch {
+                Write-Warning "[Get-ArmWebSite] $id $_"
             }
         }
     }
@@ -3639,10 +3770,15 @@ Function Get-ArmWebSitePublishingCredential
             $UriBuilder=New-Object System.UriBuilder($ApiEndpoint)
             $UriBuilder.Path="$($item.id)/config/publishingCredentials/list"
             $UriBuilder.Query="api-version=$ApiVersion"
-            $CredResult=Invoke-ArmRequest -Uri $UriBuilder.Uri -Method Post -AccessToken $AccessToken -ContentType 'application/json' -AdditionalHeaders $Headers
-            if($CredResult -ne $null)
-            {
-                Write-Output $CredResult
+            try {
+                $CredResult=Invoke-ArmRequest -Uri $UriBuilder.Uri -Method Post -AccessToken $AccessToken -ContentType 'application/json' -AdditionalHeaders $Headers
+                if($CredResult -ne $null)
+                {
+                    Write-Output $CredResult
+                }                
+            }
+            catch {
+                Write-Warning "[Get-ArmWebSitePublishingCredential] $item $_"
             }
         }
     }
@@ -3707,9 +3843,15 @@ Function Get-ArmStorageUsage
         }
         foreach ($item in $SubscriptionId)
         {
-            $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Storage/usages"
-            $Usages=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
-            Write-Output $Usages
+            try
+            {
+                $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Storage/usages"
+                $Usages=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
+                Write-Output $Usages                
+            }
+            catch {
+                Write-Warning "[Get-ArmStorageUsage] $item $_"    
+            }
         }
     }
     END
@@ -3773,9 +3915,15 @@ Function Get-ArmComputeUsage
         }
         foreach ($item in $SubscriptionId)
         {
-            $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Compute/locations/$Location/usages"
-            $Usages=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
-            Write-Output $Usages   
+            try
+            {
+                $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Compute/locations/$Location/usages"
+                $Usages=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
+                Write-Output $Usages                   
+            }
+            catch {
+                Write-Warning "[Get-ArmComputeUsage] $item $_"    
+            }
         }
 
     }
@@ -3849,9 +3997,14 @@ Function Get-ArmQuotaUsage
         }
         foreach ($item in $SubscriptionId)
         {
-            $ArmUriBld.Path="subscriptions/$item/providers/$Namespace/locations/$Location/usages"
-            $Result=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
-            Write-Output $Result
+            try {
+                $ArmUriBld.Path="subscriptions/$item/providers/$Namespace/locations/$Location/usages"
+                $Result=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
+                Write-Output $Result                
+            }
+            catch {
+                Write-Warning "[Get-ArmQuotaUsage] $item $_"
+            }
         }
     }
     END
@@ -4043,9 +4196,15 @@ Function Get-ArmPlatformImagePublisher
         }
         foreach ($item in $SubscriptionId)
         {
-            $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Compute/locations/$Location/publishers"
-            $ImagePublishers=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
-            Write-Output $ImagePublishers
+            try
+            {
+                $ArmUriBld.Path="subscriptions/$item/providers/Microsoft.Compute/locations/$Location/publishers"
+                $ImagePublishers=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
+                Write-Output $ImagePublishers                
+            }
+            catch {
+                Write-Warning  "[Get-ArmPlatformImagePublisher] $item $_"   
+            }
         }
 
     }
@@ -4143,9 +4302,15 @@ Function Get-ArmPlatformImagePublisherOffer
         }
         foreach ($ImagePublisher in $PublisherId)
         {
-            $ArmUriBld.Path="$ImagePublisher/artifacttypes/vmimage/offers"
-            $ArmResult=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
-            Write-Output $ArmResult
+            try
+            {
+                $ArmUriBld.Path="$ImagePublisher/artifacttypes/vmimage/offers"
+                $ArmResult=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
+                Write-Output $ArmResult                
+            }
+            catch {
+                Write-Warning "[Get-ArmPlatformImagePublisherOffer] $ImagePublisher $_"
+            }
         }
     }
     END
@@ -4248,9 +4413,15 @@ Function Get-ArmPlatformImageSku
         }
         foreach ($ImageOffer in $OfferId)
         {
-            $ArmUriBld.Path="$ImageOffer/skus"
-            $ArmResult=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
-            Write-Output $ArmResult
+            try
+            {
+                $ArmUriBld.Path="$ImageOffer/skus"
+                $ArmResult=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
+                Write-Output $ArmResult                
+            }
+            catch {
+                Write-Warning "[Get-ArmPlatformImageSku] $ImageOffer $_"
+            }
         }
     }
     END
@@ -4359,9 +4530,15 @@ Function Get-ArmPlatformImageVersion
         }
         foreach ($Sku in $ImageSkuId)
         {
-            $ArmUriBld.Path="$Sku/versions"
-            $ArmResult=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
-            Write-Output $ArmResult
+            try
+            {
+                $ArmUriBld.Path="$Sku/versions"
+                $ArmResult=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AccessToken $AccessToken -AdditionalHeaders $Headers -ContentType 'application/json'
+                Write-Output $ArmResult                
+            }
+            catch {
+                Write-Warning "[Get-ArmPlatformImageVersion] $Sku $_"
+            }
         }
     }
     END
