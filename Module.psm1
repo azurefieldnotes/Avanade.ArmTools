@@ -3155,7 +3155,10 @@ Function Get-ArmResourceLock
             {
                 $ArmUriBld.Path+="/providers/microsoft.authorization/locks"
                 $ArmResult=Invoke-ArmRequest -Uri $ArmUriBld.Uri -AdditionalHeaders $Headers -ContentType 'application/json' -AccessToken $AccessToken
-                Write-Output $ArmResult
+                if($ArmResult -ne $null)
+                {
+                    Write-Output $ArmResult
+                }
             }
             catch {
                 Write-Warning "[Get-ArmResourceLock] $item $_"
