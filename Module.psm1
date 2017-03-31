@@ -214,7 +214,10 @@ Function Invoke-ArmRequest
         $LimitResultPages,
         [Parameter(Mandatory=$false)]
         [scriptblock]
-        $ContentAction={param([String]$content)Write-Output $content}
+        $ContentAction={param([String]$content)Write-Output $content},
+        [Parameter(Mandatory=$false)]
+        [int]
+        $RequestDelayMilliseconds=100,
     )
     $ResultPages=0
     $TotalItems=0
@@ -294,6 +297,8 @@ Function Invoke-ArmRequest
         #Loop to aggregate OData continutation tokens
         while ($RequestResult.PSobject.Properties.name -match $NextLinkProperty)
         {
+            #Throttle the requests a bit..
+            Start-Sleep -Milliseconds $RequestDelayMilliseconds
             $ResultPages++
             $UriBld=New-Object System.UriBuilder($BaseUri)
             $NextUri=$RequestResult|Select-Object -ExpandProperty $NextLinkProperty
