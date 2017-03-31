@@ -217,7 +217,7 @@ Function Invoke-ArmRequest
         $ContentAction={param([String]$content)Write-Output $content},
         [Parameter(Mandatory=$false)]
         [int]
-        $RequestDelayMilliseconds=100,
+        $RequestDelayMilliseconds=100
     )
     $ResultPages=0
     $TotalItems=0
@@ -1639,6 +1639,11 @@ Function Register-ArmFeature
         $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
         $ArmUriBld.Query="api-version=$ApiVersion"
         $Headers=@{Accept="application/json";}
+        #cleanup raw feature name
+        if ($FeatureName -like "$Namespace/*") {
+            $FeatureName=$FeatureName.Split('/')|Select-Object -Last 1
+            Write-Verbose "[Register-ArmFeature] Using $FeatureName for registration in $Namespace"
+        }
     }
     PROCESS
     {
