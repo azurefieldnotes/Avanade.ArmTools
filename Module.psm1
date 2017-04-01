@@ -918,6 +918,51 @@ Function Get-ArmLocation
 
 <#
     .SYNOPSIS
+        Retrieves the endpoint metadata for a given resource manager endpoint
+    .PARAMETER ArmFrontDoor
+        The resource manager Uri
+    .PARAMETER ApiVersion
+        The resource manager API version
+#>
+Function Get-ArmEndpoints
+{
+    [CmdletBinding(ConfirmImpact='None')]
+    param
+    (
+        [Parameter(Mandatory=$false)]
+        [System.Uri[]]
+        $ArmFrontDoor=@($Script:DefaultArmFrontDoor),
+        [Parameter(Mandatory=$false)]
+        [System.Uri[]]
+        $ApiVersion=@($Script:DefaultArmApiVersion)
+    )
+    BEGIN
+    {
+        
+    }
+    PROCESS
+    {
+        foreach ($FrontDoor in $ArmFrontDoor)
+        {
+            try
+            {
+                $ArmUriBld=New-Object System.UriBuilder($FrontDoor)
+                $ArmUriBld.Path='/metadata/endpoints'
+                $ArmUriBld.Query="api-version=$ApiVersion"
+                $Endpoints=Invoke-RestMethod -Method Get -Uri $ArmUriBld.Uri -ContentType 'application/json' -ErrorAction Stop
+                if ($Endpoints -ne $null) {
+                    Write-Output $Endpoints
+                }
+            }
+            catch {
+                Write-Warning "[Get-ArmEndpoints] Error retrieving resource manager endpoints $_"
+            }
+        }
+    }
+}
+
+<#
+    .SYNOPSIS
         Retrieves the Azure resource providers
     .PARAMETER SubscriptionId
         The azure subscription id(s)
