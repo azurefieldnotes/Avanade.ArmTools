@@ -818,10 +818,10 @@ Function Get-ArmLocation
     [CmdletBinding(DefaultParameterSetName='object')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipeline=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipeline=$true)]
         [System.Object[]]
         $Subscription,
         [Parameter(Mandatory=$false,ParameterSetName='object')]
