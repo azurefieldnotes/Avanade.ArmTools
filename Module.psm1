@@ -1996,7 +1996,7 @@ Function New-ArmDeployment
     (
         [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='id')]
         [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='idLink')]
-        [String]
+        [String[]]
         $ResourceGroupId,
         [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicit')]
         [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicitLink')]
@@ -2006,7 +2006,9 @@ Function New-ArmDeployment
         [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicitLink')]
         [System.String]
         $ResourceGroupName,
-        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='idLink')]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicit')]
         [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicitLink')]
         [System.String]
         $DeploymentName,        
@@ -2017,15 +2019,23 @@ Function New-ArmDeployment
         [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='idLink')]
         [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicitLink')]
         [System.Uri]
-        $TemplateLink,        
+        $TemplateLink, 
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='idLink')]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicitLink')]
+        [String]
+        $TemplateVersion,                
         [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='id')]
         [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicit')]
-        [System.Object]
+        [System.Collections.IDictionary]
         $Parameters,
         [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='idLink')]
         [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicitLink')]
         [System.Uri]        
         $ParametersLink,
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='idLink')]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicitLink')]
+        [String]
+        $ParametersVersion,        
         [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='idLink')]
         [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicitLink')]
         [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='id')]
@@ -2051,9 +2061,69 @@ Function New-ArmDeployment
         [System.String]
         $ApiVersion="2016-09-01"
     )
+    BEGIN
+    {
+        $Headers=@{Accept="application/json";}
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $ArmUriBld.Query="api-version=$ApiVersion"
+    }
     PROCESS
     {
         #Which parameter set?
+        if($PSCmdlet.ParameterSetName -in 'explicit','explicitLink')
+        {
+            $ResourceGroupId=@("/subscriptions/$SubscriptionId/resourcegroups/$ResourceGroupName")
+        }
+        if($PSCmdlet.ParameterSetName -in 'explicitLink','idLink')
+        {
+            $TemplateUri=[ordered]@{
+                'uri'=$TemplateLink;
+            }
+            $ParameterUri=[ordered]@{
+                'uri'=$ParametersLink;
+            }
+            if(-not [String]::IsNullOrEmpty($TemplateVersion))
+            {
+                $TemplateUri.Add('contentVersion',$TemplateVersion)
+            }
+            if(-not [String]::IsNullOrEmpty($ParametersVersion))
+            {
+                $ParameterUri.Add('contentVersion',$ParametersVersion)
+            }
+            #Build a linked deployment
+            $DeploymentProperties=[ordered]@{
+                'templateLink'=$(New-Object PSObject -Property $TemplateUri);
+                'parametersLink'=$(New-Object psobject -Property $ParameterUri);
+                'mode'=$Mode;
+            }
+        }
+        else
+        {
+            #Build an inline deployment
+            $DeploymentProperties=[ordered]@{
+                'template'=$Template;
+                'parameters'=$Parameters;
+                'mode'=$Mode;
+            }
+        }
+        foreach ($item in $ResourceGroupId)
+        {
+            $ArmUriBld.Path="$item/providers/Microsoft.Resources/deployments/$DeploymentName"
+            $DeploymentRequest=[ordered]@{
+                'properties'=$DeploymentProperties;
+            }
+            $RequestParams=@{
+                Uri=$ArmUriBld.Uri;
+                Method='PUT';
+                AccessToken=$AccessToken;
+                AdditionalHeaders=$Headers;
+                ContentType='application/json'
+                Body=$(New-Object PSObject -Property $DeploymentRequest);
+                ErrorAction='STOP'
+            }
+            $Response=Invoke-ArmRequest @RequestParams
+            Write-Output $Response
+        }
     }
 }
 
@@ -2099,7 +2169,20 @@ Function Stop-ArmDeployment
     )
     PROCESS
     {
-        
+        $Headers=@{Accept="application/json";}
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $UriQuery="api-version=$ApiVersion"
+        $ArmUriBld.Path="/subscriptions/$SubscriptionId/resourcegroups/$ResourceGroupName/providers/Microsoft.Resources/deployments/$DeploymentName/cancel"
+        $ArmUriBld.Query=$UriQuery
+        $RequestParams=@{
+            Uri=$ArmUriBld.Uri;
+            AdditionalHeaders=$Headers;
+            AccessToken=$AccessToken;
+            ContentType='application/json';
+            Method='POST'
+            ErrorAction='STOP'
+        }
+        Invoke-ArmRequest @RequestParams|Out-Null
     }
 }
 
@@ -2145,7 +2228,20 @@ Function Remove-ArmDeployment
     )
     PROCESS
     {
-
+        $Headers=@{Accept="application/json";}
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $UriQuery="api-version=$ApiVersion"
+        $ArmUriBld.Path="/subscriptions/$SubscriptionId/resourcegroups/$ResourceGroupName/providers/Microsoft.Resources/deployments/$DeploymentName"
+        $ArmUriBld.Query=$UriQuery
+        $RequestParams=@{
+            Uri=$ArmUriBld.Uri;
+            AdditionalHeaders=$Headers;
+            AccessToken=$AccessToken;
+            ContentType='application/json';
+            Method='DELETE'
+            ErrorAction='STOP'
+        }
+        Invoke-ArmRequest @RequestParams|Out-Null
     }
 }
 
