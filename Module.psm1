@@ -184,38 +184,38 @@ Function Invoke-ArmRequest
     [CmdletBinding(ConfirmImpact='None')]
     param
     (
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
         [uri]
         $Uri,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [string]
         $ContentType='application/json',
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [System.Object]
         $Body,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [Microsoft.PowerShell.Commands.WebRequestMethod]
         $Method="GET",
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
         [string]
         $AccessToken,
         [ValidateNotNull()]
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [System.Collections.IDictionary]
         $AdditionalHeaders=@{Accept='application/json'},
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [string]
         $ValueProperty='value',
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [String]
         $NextLinkProperty='nextLink',
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [int]
         $LimitResultPages,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [scriptblock]
         $ContentAction={param([String]$content)Write-Output $content},
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [int]
         $RequestDelayMilliseconds=100
     )
@@ -400,19 +400,19 @@ Function Get-ArmSubscription
     [CmdletBinding(ConfirmImpact='None')]
     param
     (
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $SubscriptionId,
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $AccessToken,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion=$Script:DefaultArmApiVersion,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [Switch]
         $IncludeDetails
     )
@@ -444,13 +444,13 @@ Function Get-ArmTenant
     [CmdletBinding(ConfirmImpact='None')]
     param
     (
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$true,ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $AccessToken,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion=$Script:DefaultArmApiVersion
     )
@@ -497,26 +497,26 @@ Function Get-ArmResourceGroup
     [CmdletBinding(DefaultParameterSetName='object')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.Object[]]
         $Subscription,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $Name,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion=$Script:DefaultArmApiVersion
     )
@@ -560,6 +560,128 @@ Function Get-ArmResourceGroup
 
 <#
     .SYNOPSIS
+        Creates or updates a resource group
+    .DESCRIPTION
+        Creates a resource group
+    .PARAMETER SubscriptionId
+        The subscription id
+    .PARAMETER Name
+        The resource group name
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+#>
+Function New-ArmResourceGroup
+{
+    [CmdletBinding()]
+    param
+    (  
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
+        [String]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
+        [String]
+        $Name,
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
+        [System.Uri]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,   
+        [System.String]
+        $ApiVersion="2016-07-01"
+    )
+    PROCESS
+    {
+        Write-Verbose "[New-ArmResourceGroup] Creating resource group $Name on Subscription $SubscriptionId"
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $ArmUriBld.Path="/subscriptions/$SubscriptionId/resourceGroups/$Name"
+        $ArmUriBld.Query="api-version=$ApiVersion"
+        $RequestParams=@{
+            Uri=$ArmUriBld.Uri;
+            Method='PUT';
+            AccessToken=$AccessToken;
+        }
+        $Result=Invoke-ArmRequest @RequestParams
+        Write-Output $Result
+    }
+}
+
+<#
+    .SYNOPSIS
+        Removes a resource group
+    .DESCRIPTION
+        Removes a resource group
+    .PARAMETER Id
+        The resource group id
+    .PARAMETER SubscriptionId
+        The subscription id
+    .PARAMETER Name
+        The resource group name
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+#>
+Function Remove-ArmResourceGroup
+{
+    [CmdletBinding()]
+    param
+    (  
+        [Parameter(Mandatory=$true,ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='id')]
+        [String[]]
+        $Id,
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicit')]
+        [String]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicit')]
+        [String]
+        $Name,
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicit')]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='id')]
+        [System.Uri]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='id')]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,   
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='id')]
+        [System.String]
+        $ApiVersion="2016-07-01"
+    )
+    PROCESS
+    {
+        if ($PSCmdlet.ParameterSetName -eq 'explicit')
+        {
+            $Id=@("/subscriptions/$SubscriptionId/resourceGroups/$Name")
+        }
+        foreach($ResourceGroupId in $Id)
+        {
+            Write-Verbose "[Remove-ArmResourceGroup] Removing resource group $ResourceGroupId"
+            $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+            $ArmUriBld.Path=$ResourceGroupId
+            $ArmUriBld.Query="api-version=$ApiVersion"
+            $RequestParams=@{
+                Uri=$ArmUriBld.Uri;
+                Method='DELETE';
+                AccessToken=$AccessToken;
+            }
+            Invoke-ArmRequest @RequestParams|Out-Null
+        }
+    }
+}
+
+<#
+    .SYNOPSIS
         Retrieves abstract resource instance(s)
     .PARAMETER SubscriptionId
         The azure subscription id(s)
@@ -585,46 +707,46 @@ Function Get-ArmResource
     [CmdletBinding(DefaultParameterSetName='object')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='explicitByNamespace',ValueFromPipeline=$true)]
-        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='explicitByNamespace',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$true,ParameterSetName='objectByNamespace',ValueFromPipeline=$true)]
-        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='objectByNamespace',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.Object[]]
         $Subscription,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ResourceGroup,
-        [Parameter(Mandatory=$true,ParameterSetName='objectByNamespace')]
-        [Parameter(Mandatory=$true,ParameterSetName='explicitByNamespace')]
+        [Parameter(Mandatory=$true,ParameterSetName='objectByNamespace',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='explicitByNamespace',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ResourceType,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $Filter,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.Int32]
         $Top,
-        [Parameter(Mandatory=$true,ParameterSetName='objectByNamespace')]
-        [Parameter(Mandatory=$true,ParameterSetName='explicitByNamespace')]
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$true,ParameterSetName='objectByNamespace',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='explicitByNamespace',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='objectByNamespace')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicitByNamespace')]
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='objectByNamespace',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicitByNamespace',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
-        [Parameter(Mandatory=$false,ParameterSetName='objectByNamespace')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicitByNamespace')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='objectByNamespace',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicitByNamespace',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion=$Script:DefaultArmApiVersion
     )
@@ -703,26 +825,26 @@ Function Get-ArmResourceInstance
     [CmdletBinding(DefaultParameterSetName='object')]
     param
     (
-        [Parameter(Mandatory=$true,ValueFromPipeline=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ValueFromPipeline=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String[]]
         $Id,
-        [Parameter(Mandatory=$true,ValueFromPipeline=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ValueFromPipeline=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
         [PSObject[]]
         $Resource,
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $ExpandProperties,
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion=$Script:DefaultArmApiVersion
     )
@@ -818,26 +940,26 @@ Function Get-ArmLocation
     [CmdletBinding(DefaultParameterSetName='object')]
     param
     (
-        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.Object[]]
         $Subscription,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $Location,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion=$Script:DefaultArmApiVersion
     )
@@ -929,10 +1051,10 @@ Function Get-ArmEndpoints
     [CmdletBinding(ConfirmImpact='None')]
     param
     (
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [System.Uri[]]
         $ArmFrontDoor=@($Script:DefaultArmFrontDoor),
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [System.Uri[]]
         $ApiVersion=@($Script:DefaultArmApiVersion)
     )
@@ -982,31 +1104,31 @@ Function Get-ArmProvider
     [CmdletBinding(DefaultParameterSetName='object')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.Object[]]
         $Subscription,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [ValidatePattern('^[A-Za-z]+.[A-Za-z]+$')]
         [System.String]
         $Namespace,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion=$Script:DefaultArmApiVersion,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [String]
         $ExpandFilter
     )
@@ -1078,26 +1200,26 @@ Function Register-ArmProvider
     [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [psobject[]]
         $Subscription,
-        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $Namespace,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion="2016-09-01"
     )
@@ -1153,26 +1275,26 @@ Function Unregister-ArmProvider
     [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [psobject[]]
         $Subscription,
-        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $Namespace,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion="2016-09-01"
     )
@@ -1216,22 +1338,22 @@ Function Remove-ArmItem
     [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
     param
     (
-        [Parameter(Mandatory=$true,ValueFromPipeline=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ValueFromPipeline=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
         [System.Object[]]
         $Resource,
-        [Parameter(Mandatory=$true,ValueFromPipeline=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ValueFromPipeline=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String[]]
         $ResourceId,
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
         [String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion=$Script:DefaultArmApiVersion
     )
@@ -1252,7 +1374,7 @@ Function Remove-ArmItem
             $UriBuilder.Query="api-version=$ApiVersion"
             try
             {
-                $Result=Invoke-ArmRequest -Uri $UriBuilder.Uri -Method Delete -AccessToken $AccessToken
+                Invoke-ArmRequest -Uri $UriBuilder.Uri -Method Delete -AccessToken $AccessToken|Out-Null
             }
             catch
             {
@@ -1296,31 +1418,31 @@ Function Get-ArmResourceType
         [Parameter(Mandatory=$true,ParameterSetName='objectNamespace',ValueFromPipeline=$true)]
         [System.Object[]]
         $Subscription,
-        [Parameter(Mandatory=$true,ParameterSetName='idNamespace')]
-        [Parameter(Mandatory=$true,ParameterSetName='objectNamespace')]
+        [Parameter(Mandatory=$true,ParameterSetName='idNamespace',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='objectNamespace',ValueFromPipelineByPropertyName=$true)]
         [ValidatePattern('^[A-Za-z]+[\.]+[A-Za-z]+([\.]+[A-Za-z]+)*')]
         [System.String]
         $Namespace,
-        [Parameter(Mandatory=$true,ParameterSetName='objectType')]
-        [Parameter(Mandatory=$true,ParameterSetName='idType')]
+        [Parameter(Mandatory=$true,ParameterSetName='objectType',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='idType',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ResourceType,
-        [Parameter(Mandatory=$true,ParameterSetName='objectType')]
-        [Parameter(Mandatory=$true,ParameterSetName='objectNamespace')]
-        [Parameter(Mandatory=$true,ParameterSetName='idType')]
-        [Parameter(Mandatory=$true,ParameterSetName='idNamespace')]
+        [Parameter(Mandatory=$true,ParameterSetName='objectType',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='objectNamespace',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='idType',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='idNamespace',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='objectType')]
-        [Parameter(Mandatory=$false,ParameterSetName='objectNamespace')]
-        [Parameter(Mandatory=$false,ParameterSetName='idType')]
-        [Parameter(Mandatory=$false,ParameterSetName='idNamespace')]
+        [Parameter(Mandatory=$false,ParameterSetName='objectType',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='objectNamespace',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='idType',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='idNamespace',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='objectType')]
-        [Parameter(Mandatory=$false,ParameterSetName='objectNamespace')]
-        [Parameter(Mandatory=$false,ParameterSetName='idType')]
-        [Parameter(Mandatory=$false,ParameterSetName='idNamespace')]
+        [Parameter(Mandatory=$false,ParameterSetName='objectType',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='objectNamespace',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='idType',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='idNamespace',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion=$Script:DefaultArmApiVersion
     )
@@ -1724,23 +1846,23 @@ Function Get-ArmProviderOperation
     [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [psobject[]]
         $Provider,
-        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [ValidatePattern('^[A-Za-z]+.[A-Za-z]+$')]
         [System.String[]]
         $ProviderNamespace,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion="2015-07-01"
     )
@@ -1845,6 +1967,190 @@ Function Get-ArmTagName
 
 <#
     .SYNOPSIS
+        Creates a resource group deployment
+    .PARAMETER SubscriptionId
+        The subscription id
+    .PARAMETER ResourceGroupName
+        The resource group name
+    .PARAMETER DeploymentName
+        The deployment name
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+    .PARAMETER Template
+        The resource group template
+    .PARAMETER Parameters
+        The resource group template parameters
+    .PARAMETER TemplateLink
+        The uri for resource group template
+    .PARAMETER ParametersLink
+        The uri for resource group template parameters        
+#>
+Function New-ArmDeployment
+{
+    [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='explicit')]
+    param
+    (
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='idLink')]
+        [String]
+        $ResourceGroupId,
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicitLink')]
+        [System.String]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicitLink')]
+        [System.String]
+        $ResourceGroupName,
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicitLink')]
+        [System.String]
+        $DeploymentName,        
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicit')]
+        [System.Object]
+        $Template,
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='idLink')]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicitLink')]
+        [System.Uri]
+        $TemplateLink,        
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicit')]
+        [System.Object]
+        $Parameters,
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='idLink')]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicitLink')]
+        [System.Uri]        
+        $ParametersLink,
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='idLink')]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicitLink')]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicit')]
+        [String]
+        $Mode='Incremental',
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='idLink')]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicitLink')]        
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='idLink')]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicitLink')]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='idLink')]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicitLink')]
+        [System.String]
+        $ApiVersion="2016-09-01"
+    )
+    PROCESS
+    {
+        #Which parameter set?
+    }
+}
+
+<#
+    .SYNOPSIS
+        Stops a resource group deployment
+    .PARAMETER SubscriptionId
+        The subscription id
+    .PARAMETER ResourceGroupName
+        The resource group name
+    .PARAMETER DeploymentName
+        The deployment name
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+#>
+Function Stop-ArmDeployment
+{
+    [CmdletBinding(ConfirmImpact='None')]
+    param
+    (
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
+        [System.String]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
+        [System.String]
+        $ResourceGroupName,
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
+        [System.String]
+        $DeploymentName,
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
+        [System.String]
+        $ApiVersion="2016-09-01"
+    )
+    PROCESS
+    {
+        
+    }
+}
+
+<#
+    .SYNOPSIS
+        Removes a resource group deployment
+    .PARAMETER SubscriptionId
+        The subscription id
+    .PARAMETER ResourceGroupName
+        The resource group name
+    .PARAMETER DeploymentName
+        The deployment name
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+#>
+Function Remove-ArmDeployment
+{
+    [CmdletBinding(ConfirmImpact='None')]
+    param
+    (
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
+        [System.String]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
+        [System.String]
+        $ResourceGroupName,
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
+        [System.String]
+        $DeploymentName,
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
+        [System.String]
+        $ApiVersion="2016-09-01"
+    )
+    PROCESS
+    {
+
+    }
+}
+
+<#
+    .SYNOPSIS
         Retrieves resource group deployments
     .PARAMETER SubscriptionId
         The subscription id
@@ -1868,28 +2174,28 @@ Function Get-ArmDeployment
     [CmdletBinding(ConfirmImpact='None')]
     param
     (
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $SubscriptionId,
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ResourceGroupName,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $DeploymentName,
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
         [String]
         $AccessToken,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion="2016-09-01",
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [String]
         $Filter,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [Int32]
         $Top
     )
@@ -1944,28 +2250,28 @@ Function Get-ArmDeploymentOperation
     [CmdletBinding(ConfirmImpact='None')]
     param
     (
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $SubscriptionId,
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ResourceGroupName,
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $DeploymentName,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [String]
         $OperationId,
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
         [String]
         $AccessToken,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion="2016-09-01",
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [Int32]
         $Top
     )
@@ -2008,22 +2314,22 @@ Function Get-ArmAdvisorRecommendation
     [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [psobject[]]
         $Subscription,
-        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion="2016-05-09-preview"
     )
@@ -2076,22 +2382,22 @@ Function Get-ArmClassicAdministrator
     [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [psobject[]]
         $Subscription,
-        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion="2015-06-01"
     )
@@ -2148,16 +2454,16 @@ Function Get-ArmDiagnosticSetting
     [CmdletBinding(ConfirmImpact='None')]
     param
     (
-        [Parameter(Mandatory=$true,ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [String[]]
         $ResourceId,
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
         [String]
         $AccessToken,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion="2015-07-01"
     )
@@ -2197,13 +2503,13 @@ Function Get-ArmEventCategory
     [CmdletBinding(ConfirmImpact='None')]
     param
     (
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
         [String]
         $AccessToken,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion='2015-04-01'
     )
@@ -2238,34 +2544,34 @@ Function Get-ArmEventLog
     [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
     param
     (
-        [Parameter(Mandatory=$true,ValueFromPipeline=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ValueFromPipeline=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
         [Object[]]
         $Subscription,
-        [Parameter(Mandatory=$true,ValueFromPipeline=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ValueFromPipeline=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
         [Switch]
         $DigestEvents,
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [Parameter(Mandatory=$false,ParameterSetName='object')]
         [String]
         $Filter,
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
         [System.Int32]
         $Top,
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
         [String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion=$Script:DefaultEventLogApiVersion
     )
@@ -2350,22 +2656,22 @@ Function Get-ArmResourceMetric
     [CmdletBinding()]
     param
     (
-        [Parameter(Mandatory=$true,ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [String[]]
         $ResourceId,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [String]
         $Filter,
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
         [String]
         $AccessToken,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion='2016-09-01',
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ClassicApiVersion='2014-04-01'
     )
@@ -2447,19 +2753,19 @@ Function Get-ArmResourceMetricDefinition
     [CmdletBinding()]
     param
     (
-        [Parameter(Mandatory=$true,ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [String[]]
         $ResourceId,
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
         [String]
         $AccessToken,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion=$Script:DefaultMonitorApiVersion,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ClassicApiVersion=$Script:ClassicMonitorApiVersion
     )
@@ -2536,30 +2842,30 @@ Function Get-ArmRateCard
     [CmdletBinding(DefaultParameterSetName='object')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.Object[]]
         $Subscription,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $OfferPrefix="MS-AZR-",
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $OfferCode='0003P',
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion=$Script:DefaultBillingApiVerion
     )
@@ -2601,7 +2907,6 @@ Function Get-ArmRateCard
         }
 
         $OfferDurableId="$($OfferPrefix)$($OfferCode)"
-        $DesiredCulture=$SpecificCultures|Where-Object{$_.Name -eq $Locale}|Select-Object -First 1
         $DesiredRegion=New-Object System.Globalization.RegionInfo($RegionInfo)
 
         $ArmUriBld.Query="api-version=$ApiVersion&`$filter=OfferDurableId eq '$OfferDurableId' " +
@@ -2665,65 +2970,65 @@ Function Get-ArmUsageAggregate
     [CmdletBinding(DefaultParameterSetName='object')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='explicitOffset')]
-        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='explicitOffset',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$true,ParameterSetName='objectOffset')]
-        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='objectOffset',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.Object[]]
         $Subscription,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.DateTime]
         $StartTime,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.DateTime]
         $EndTime=[System.DateTime]::UtcNow,
-        [Parameter(Mandatory=$true,ParameterSetName='objectOffset')]
-        [Parameter(Mandatory=$true,ParameterSetName='explicitOffset')]
+        [Parameter(Mandatory=$true,ParameterSetName='objectOffset',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='explicitOffset',ValueFromPipelineByPropertyName=$true)]
         [System.DateTimeOffset]
         $StartTimeOffset,
-        [Parameter(Mandatory=$false,ParameterSetName='objectOffset')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset')]
+        [Parameter(Mandatory=$false,ParameterSetName='objectOffset',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset',ValueFromPipelineByPropertyName=$true)]
         [System.DateTimeOffset]
         $EndTimeOffset,
-        [Parameter(Mandatory=$false,ParameterSetName='objectOffset')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset')]
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='objectOffset',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.Int32]
         $LimitResultPages,
-        [Parameter(Mandatory=$false,ParameterSetName='objectOffset')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset')]
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='objectOffset',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [ValidateSet('Daily','Hourly')]
         [System.String]
         $Granularity='Daily',
-        [Parameter(Mandatory=$false,ParameterSetName='objectOffset')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset')]
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='objectOffset',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [Switch]
         $ShowDetails,
-        [Parameter(Mandatory=$false,ParameterSetName='objectOffset')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset')]
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='objectOffset',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='objectOffset')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset')]
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='objectOffset',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='objectOffset')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset')]
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='objectOffset',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicitOffset',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion=$Script:DefaultBillingApiVerion
     )
@@ -2789,42 +3094,42 @@ Function Get-ArmBillingInvoice
     [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.Object[]]
         $Subscription,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $InvoiceName,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $Filter,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $Expand,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.Int32]
         $Top,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [Switch]
         $ExpandDownloadUrl,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion="2017-02-27-preview"
     )
@@ -2909,26 +3214,26 @@ Function Get-ArmPolicyAssignment
     [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [psobject[]]
         $Subscription,
-        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $AssignmentName,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion="2016-12-01"
     )
@@ -2991,26 +3296,26 @@ Function Get-ArmPolicyDefinition
     [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [psobject[]]
         $Subscription,
-        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $DefinitionName,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion="2016-12-01"
     )
@@ -3070,26 +3375,26 @@ Function Get-ArmRoleAssignment
     [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [psobject[]]
         $Subscription,
-        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $RoleName,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion="2016-07-01"
     )
@@ -3153,34 +3458,34 @@ Function Get-ArmResourceLock
     [CmdletBinding(DefaultParameterSetName='object')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.Object[]]
         $Subscription,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ResourceGroup,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ResourceType,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ResourceName,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='explicit')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='explicit',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion='2015-01-01'
     )
@@ -3248,26 +3553,26 @@ Function Get-ArmRoleDefinition
     [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [psobject[]]
         $Subscription,
-        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $DefinitionName,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion="2016-07-01"
     )
@@ -3333,30 +3638,30 @@ Function Get-ArmVmDiskImage
     [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [psobject[]]
         $Subscription,
-        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ResourceGroup,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ImageName,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion="2016-04-30-preview"
     )
@@ -3422,30 +3727,30 @@ Function Get-ArmVmManagedDisk
     [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [psobject[]]
         $Subscription,
-        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ResourceGroup,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $DiskName,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion="2016-04-30-preview"
     )
@@ -3510,26 +3815,26 @@ Function Get-ArmVmSize
     [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [psobject[]]
         $Subscription,
-        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $Location,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion="2017-03-30"
     )
@@ -3586,30 +3891,30 @@ Function Get-ArmVmSnapshot
     [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [psobject[]]
         $Subscription,
-        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ResourceGroup,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $SnapshotName,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion="2016-04-30-preview"
     )
@@ -3676,38 +3981,38 @@ Function Get-ArmWebSite
     [CmdletBinding(DefaultParameterSetName='object')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
-        [Parameter(Mandatory=$true,ParameterSetName='idWithName',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='idWithName',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$true,ParameterSetName='objectWithName',ValueFromPipeline=$true)]
-        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='objectWithName',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.Object[]]
         $Subscription,
-        [Parameter(Mandatory=$true,ParameterSetName='idWithName')]
-        [Parameter(Mandatory=$true,ParameterSetName='objectWithName')]
+        [Parameter(Mandatory=$true,ParameterSetName='idWithName',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='objectWithName',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $WebsiteName,
-        [Parameter(Mandatory=$true,ParameterSetName='idWithName')]
-        [Parameter(Mandatory=$true,ParameterSetName='objectWithName')]
+        [Parameter(Mandatory=$true,ParameterSetName='idWithName',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='objectWithName',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ResourceGroupName,
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='idWithName')]
-        [Parameter(Mandatory=$true,ParameterSetName='objectWithName')]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='idWithName',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='objectWithName',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='idWithName')]
-        [Parameter(Mandatory=$false,ParameterSetName='objectWithName')]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='idWithName',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='objectWithName',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='idWithName')]
-        [Parameter(Mandatory=$false,ParameterSetName='objectWithName')]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='idWithName',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='objectWithName',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion=$Script:DefaultWebsiteApiVersion
     )
@@ -3775,36 +4080,36 @@ Function Get-ArmWebSitePublishingCredential
     [CmdletBinding(DefaultParameterSetName='id')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $SubscriptionId,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
         [System.Object]
         $Subscription,
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ResourceGroupName,
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $WebsiteName,
-        [Parameter(Mandatory=$true,ParameterSetName='bySiteObject',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='bySiteObject',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.Object[]]
         $Website,
-        [Parameter(Mandatory=$true,ParameterSetName='bySiteObject')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
+        [Parameter(Mandatory=$true,ParameterSetName='bySiteObject',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='bySiteObject')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='bySiteObject',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='bySiteObject')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
+        [Parameter(Mandatory=$false,ParameterSetName='bySiteObject',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion=$Script:DefaultWebsiteApiVersion
     )
@@ -3869,22 +4174,22 @@ Function Get-ArmStorageUsage
     [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [psobject[]]
         $Subscription,
-        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion="2016-12-01"
     )
@@ -3937,26 +4242,26 @@ Function Get-ArmComputeUsage
     [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [psobject[]]
         $Subscription,
-        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $Location,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion="2017-03-30"
     )
@@ -4014,31 +4319,31 @@ Function Get-ArmQuotaUsage
     [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [psobject[]]
         $Subscription,
-        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [ValidatePattern('^[A-Za-z]+.[A-Za-z]+$')]
         [String]
         $Namespace,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $Location,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion="2016-12-01"
     )
@@ -4089,39 +4394,39 @@ Function Get-ArmResourceUsage
     [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='offset')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='default',ValueFromPipeline=$true)]
-        [Parameter(Mandatory=$true,ParameterSetName='filter',ValueFromPipeline=$true)]
-        [Parameter(Mandatory=$true,ParameterSetName='datetime',ValueFromPipeline=$true)]
-        [Parameter(Mandatory=$true,ParameterSetName='offset',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='default',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='filter',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='datetime',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='offset',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $ResourceId,
-        [Parameter(Mandatory=$true,ParameterSetName='filter')]
+        [Parameter(Mandatory=$true,ParameterSetName='filter',ValueFromPipelineByPropertyName=$true)]
         [String]
         $Filter,
-        [Parameter(Mandatory=$true,ParameterSetName='filter')]
-        [Parameter(Mandatory=$true,ParameterSetName='datetime')]
-        [Parameter(Mandatory=$true,ParameterSetName='offset')]
+        [Parameter(Mandatory=$true,ParameterSetName='filter',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='datetime',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='offset',ValueFromPipelineByPropertyName=$true)]
         [String]
         $AccessToken,
-        [Parameter(Mandatory=$true,ParameterSetName='datetime')]
+        [Parameter(Mandatory=$true,ParameterSetName='datetime',ValueFromPipelineByPropertyName=$true)]
         [System.DateTime]
         $UsageStart,
-        [Parameter(Mandatory=$true,ParameterSetName='datetime')]
+        [Parameter(Mandatory=$true,ParameterSetName='datetime',ValueFromPipelineByPropertyName=$true)]
         [System.DateTime]
         $UsageEnd,
-        [Parameter(Mandatory=$true,ParameterSetName='offset')]
+        [Parameter(Mandatory=$true,ParameterSetName='offset',ValueFromPipelineByPropertyName=$true)]
         [System.DateTimeOffset]
         $UsageStartOffset,
-        [Parameter(Mandatory=$true,ParameterSetName='offset')]
+        [Parameter(Mandatory=$true,ParameterSetName='offset',ValueFromPipelineByPropertyName=$true)]
         [System.DateTimeOffset]
         $UsageEndOffset,
-        [Parameter(Mandatory=$false,ParameterSetName='default')]
+        [Parameter(Mandatory=$false,ParameterSetName='default',ValueFromPipelineByPropertyName=$true)]
         [Switch]
         $GetDefault,
-        [Parameter(Mandatory=$false,ParameterSetName='default')]
-        [Parameter(Mandatory=$false,ParameterSetName='filter')]
-        [Parameter(Mandatory=$false,ParameterSetName='datetime')]
-        [Parameter(Mandatory=$false,ParameterSetName='offset')]
+        [Parameter(Mandatory=$false,ParameterSetName='default',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='filter',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='datetime',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='offset',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor
     )
@@ -4218,26 +4523,26 @@ Function Get-ArmPlatformImagePublisher
     [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='object')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [psobject[]]
         $Subscription,
-        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $Location,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion="2017-03-30"
     )
@@ -4299,42 +4604,42 @@ Function Get-ArmPlatformImagePublisherOffer
     [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='byPublisherObject')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='byPublisherObject',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='byPublisherObject',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [psobject[]]
         $Publisher,
-        [Parameter(Mandatory=$true,ParameterSetName='byPublisherId')]
+        [Parameter(Mandatory=$true,ParameterSetName='byPublisherId',ValueFromPipelineByPropertyName=$true)]
         [string[]]
         $PublisherId,
-        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [psobject[]]
         $Subscription,
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $Location,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $PublisherName,
-        [Parameter(Mandatory=$true,ParameterSetName='byPublisherId')]
-        [Parameter(Mandatory=$true,ParameterSetName='byPublisherObject')]
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='byPublisherId',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='byPublisherObject',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='byPublisherId')]
-        [Parameter(Mandatory=$false,ParameterSetName='byPublisherObject')]
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='byPublisherId',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='byPublisherObject',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='byPublisherId')]
-        [Parameter(Mandatory=$false,ParameterSetName='byPublisherObject')]
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='byPublisherId',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='byPublisherObject',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion="2017-03-30"
     )
@@ -4406,46 +4711,46 @@ Function Get-ArmPlatformImageSku
     [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='byPublisherObject')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='byPublisherObject',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='byPublisherObject',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [psobject[]]
         $Offer,
-        [Parameter(Mandatory=$true,ParameterSetName='byPublisherId')]
+        [Parameter(Mandatory=$true,ParameterSetName='byPublisherId',ValueFromPipelineByPropertyName=$true)]
         [string[]]
         $OfferId,
-        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [psobject[]]
         $Subscription,
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $Location,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $PublisherName,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $OfferName,
-        [Parameter(Mandatory=$true,ParameterSetName='byPublisherId')]
-        [Parameter(Mandatory=$true,ParameterSetName='byPublisherObject')]
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='byPublisherId',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='byPublisherObject',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='byPublisherId')]
-        [Parameter(Mandatory=$false,ParameterSetName='byPublisherObject')]
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='byPublisherId',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='byPublisherObject',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='byPublisherId')]
-        [Parameter(Mandatory=$false,ParameterSetName='byPublisherObject')]
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='byPublisherId',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='byPublisherObject',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion="2017-03-30"
     )
@@ -4519,50 +4824,50 @@ Function Get-ArmPlatformImageVersion
     [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='byPublisherObject')]
     param
     (
-        [Parameter(Mandatory=$true,ParameterSetName='byPublisherObject',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='byPublisherObject',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [psobject[]]
         $ImageSku,
-        [Parameter(Mandatory=$true,ParameterSetName='byPublisherId')]
+        [Parameter(Mandatory=$true,ParameterSetName='byPublisherId',ValueFromPipelineByPropertyName=$true)]
         [string[]]
         $ImageSkuId,
-        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
         [psobject[]]
         $Subscription,
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.String[]]
         $SubscriptionId,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $Location,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $PublisherName,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $OfferName,
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $SkuName,
-        [Parameter(Mandatory=$true,ParameterSetName='byPublisherId')]
-        [Parameter(Mandatory=$true,ParameterSetName='byPublisherObject')]
-        [Parameter(Mandatory=$true,ParameterSetName='object')]
-        [Parameter(Mandatory=$true,ParameterSetName='id')]
+        [Parameter(Mandatory=$true,ParameterSetName='byPublisherId',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='byPublisherObject',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$true,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ParameterSetName='byPublisherId')]
-        [Parameter(Mandatory=$false,ParameterSetName='byPublisherObject')]
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='byPublisherId',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='byPublisherObject',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,
-        [Parameter(Mandatory=$false,ParameterSetName='byPublisherId')]
-        [Parameter(Mandatory=$false,ParameterSetName='byPublisherObject')]
-        [Parameter(Mandatory=$false,ParameterSetName='object')]
-        [Parameter(Mandatory=$false,ParameterSetName='id')]
+        [Parameter(Mandatory=$false,ParameterSetName='byPublisherId',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='byPublisherObject',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='object',ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ParameterSetName='id',ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ApiVersion="2017-03-30"
     )
