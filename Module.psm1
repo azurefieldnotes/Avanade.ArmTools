@@ -2112,13 +2112,14 @@ Function New-ArmDeployment
             $DeploymentRequest=[ordered]@{
                 'properties'=$DeploymentProperties;
             }
+            $Deployment=New-Object PSObject -Property $DeploymentRequest
             $RequestParams=@{
                 Uri=$ArmUriBld.Uri;
                 Method='PUT';
                 AccessToken=$AccessToken;
                 AdditionalHeaders=$Headers;
                 ContentType='application/json'
-                Body=$(New-Object PSObject -Property $DeploymentRequest);
+                Body=$($Deployment|ConvertTo-Json -Depth 12);
                 ErrorAction='STOP'
             }
             $Response=Invoke-ArmRequest @RequestParams
