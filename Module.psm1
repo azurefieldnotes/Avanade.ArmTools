@@ -585,12 +585,20 @@ Function New-ArmResourceGroup
         [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
         [String]
         $Name,
+        [Parameter(Mandatory = $true,ValueFromPipelineByPropertyName = $true)]
+        [String]
+        $Location,
+        [Parameter(Mandatory = $false,ValueFromPipelineByPropertyName = $true)]
+        [String]
+        $ManagedBy,
+        [Parameter(Mandatory = $false,ValueFromPipelineByPropertyName = $true)]
+        [System.Collections.IDictionary]
+        $Tags,        
         [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
         [String]
         $AccessToken,
         [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [System.Uri]
-        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         $ApiEndpoint=$Script:DefaultArmFrontDoor,   
         [System.String]
         $ApiVersion="2016-07-01"
@@ -601,10 +609,27 @@ Function New-ArmResourceGroup
         $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
         $ArmUriBld.Path="/subscriptions/$SubscriptionId/resourceGroups/$Name"
         $ArmUriBld.Query="api-version=$ApiVersion"
+        $ResGroupProperties = [ordered]@{
+            'id'         = "/subscriptions/$SubscriptionId/resourceGroups/$Name";
+            'name'       = $Name;
+            'location'   = $Location;
+            'properties' = [ordered]@{}
+        }
+        if (-not [String]::IsNullOrEmpty($ManagedBy))
+        {
+            $ResGroupProperties.properties.Add('managedBy',$ManagedBy)
+        }
+        if (($Tags -ne $null) -and ($Tags.Count -gt 0))
+        {
+            $ResGroupProperties.properties.Add('tags',$Tags)
+        }        
         $RequestParams=@{
             Uri=$ArmUriBld.Uri;
             Method='PUT';
             AccessToken=$AccessToken;
+            AdditionalHeaders=@{'Accept'='application/json'};
+            Body=$(New-Object psobject -Property $ResGroupProperties|ConvertTo-Json -Depth 4)
+            ErrorAction='STOP'
         }
         $Result=Invoke-ArmRequest @RequestParams
         Write-Output $Result
@@ -642,13 +667,11 @@ Function Remove-ArmResourceGroup
         $SubscriptionId,
         [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicit')]
         [String]
-        $Name,
+        $Name,                     
         [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='id')]
         [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicit')]
         [String]
         $AccessToken,
-        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicit')]
-        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='id')]
         [System.Uri]
         [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicit')]
         [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='id')]
@@ -674,6 +697,7 @@ Function Remove-ArmResourceGroup
                 Uri=$ArmUriBld.Uri;
                 Method='DELETE';
                 AccessToken=$AccessToken;
+                ErrorAction='Stop'
             }
             Invoke-ArmRequest @RequestParams|Out-Null
         }
@@ -2020,8 +2044,8 @@ Function New-ArmDeployment
         [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicitLink')]
         [System.Uri]
         $TemplateLink, 
-        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='idLink')]
-        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicitLink')]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='idLink')]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicitLink')]
         [String]
         $TemplateVersion,                
         [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='id')]
@@ -2032,8 +2056,8 @@ Function New-ArmDeployment
         [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicitLink')]
         [System.Uri]        
         $ParametersLink,
-        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='idLink')]
-        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicitLink')]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='idLink')]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='explicitLink')]
         [String]
         $ParametersVersion,        
         [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='idLink')]
