@@ -5032,3 +5032,244 @@ Function Get-ArmPlatformImageVersion
 }
 
 #endregion
+
+#region KeyVault
+
+#Create KeyVault
+Function New-ArmKeyVault
+{
+    [CmdletBinding(ConfirmImpact='None')]
+    param
+    (
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
+        [System.String]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
+        [System.String]
+        $ResourceGroupName,
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
+        [System.String]
+        $VaultName,
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
+        [System.String]
+        $TenantId,       
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
+        [System.String]
+        $Location,        
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
+        [System.String]
+        $ObjectId,
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
+        [System.String]
+        $VaultUri,        
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
+        [System.String]
+        $Sku='Standard',
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
+        [System.String]
+        $SkuFamily='A',        
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
+        [System.String]
+        $CreateMode='default',
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
+        [System.Collections.IDictionary]
+        $Tags,
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
+        [Switch]
+        $EnableForDeployment,
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
+        [Switch]
+        $EnableForDiskEncryption,
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
+        [Switch]
+        $EnableForTemplateDeployment,
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
+        [Switch]
+        $EnableSoftDelete,          
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
+        [System.String]
+        $ApiVersion="2016-10-01"
+    )
+    BEGIN
+    {
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $ArmUriBld.Query="api-version=$ApiVersion"        
+        $RequestParams=@{
+            ContentType='application/json';
+            AdditionalHeaders=@{Accept="application/json";};
+            AccessToken=$AccessToken;
+            Method='PUT'
+        }        
+    }
+    PROCESS
+    {
+        $ArmUriPath="/subscriptions/$SubscriptionId/resourceGroups/$ResourceGroupName/providers/Microsoft.KeyVault/vaults/$VaultName"
+        $ArmUriBld.Path=$ArmUriPath
+        $RequestParams['Uri']=$ArmUriBld.Uri
+        $VaultSku=New-Object PSObject -Property @{
+                name=$Sku;
+                family=$SkuFamily;
+        };
+        $AppPermission=New-Object PSObject @{
+            "keys"=@('all');
+            "secrets"=@('all');
+        }
+        $VaultAccessPolicy=New-Object PSObject @{
+            "tenantId"=$TenantId;
+            "objectId"=$ObjectId;
+            "permissions"=$AppPermission;
+        }
+        $VaultProperties=[ordered]@{
+            tenantId=$TenantId;
+            sku=$VaultSku;
+            accessPolicies=@($VaultAccessPolicy);
+            enabledForDeployment=$($EnableForDeployment.IsPresent);
+            enabledForDiskEncryption=$($EnableForDiskEncryption.IsPresent)
+            enabledForTemplateDeployment=$($EnableForDeployment.IsPresent);
+            resourceGroupName=$ResourceGroupName;
+            subscriptionId=$SubscriptionId;
+            vaultName=$VaultName;
+        }
+        if($EnableSoftDelete.IsPresent)
+        {
+            $VaultProperties.Add('enableSoftDelete',$true)
+        }
+        $VaultProperties.Add('createMode',$CreateMode)
+        $NewVault=[ordered]@{        
+            location=$Location;
+            tags=$Tags;
+            properties=$VaultProperties;
+        }
+        $RequestParams['Body']=$($NewVault|ConvertTo-Json -Depth 10)
+        $ArmResult=Invoke-ArmRequest @RequestParams
+        Write-Output $ArmResult
+    }
+}
+
+#Delete KeyVault
+Function Remove-ArmKeyVault
+{
+    [CmdletBinding(DefaultParameterSetName='ByName')]
+    param
+    (
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='ByName')]
+        [System.String]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='ByName')]
+        [System.String]
+        $ResourceGroupName,
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='ByName')]
+        [System.String]
+        $VaultName,
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='ByName')]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$false,ParameterSetName='ByName')]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$false,ParameterSetName='ByName')]
+        [System.String]
+        $ApiVersion="2016-10-01"
+    )
+    BEGIN
+    {
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)
+        $ArmUriBld.Query="api-version=$ApiVersion"
+    }
+    PROCESS
+    {
+        $ArmUriBld.Path="/subscriptions/${SubscriptionId}/resourceGroups/${ResourceGroupName}/providers/Microsoft.KeyVault/vaults/${VaultName}"
+        $RequestParams=@{
+            Method='DELETE';
+            AdditionalHeaders=@{'Accept'='application/json'};
+            ContentType='application/json';
+            AccessToken=$AccessToken;
+            Uri=$ArmUriBld.Uri
+        }
+        $DeleteResult=Invoke-ArmRequest @RequestParams
+        Write-Output $DeleteResult
+    }
+}
+
+#Get KeyVault
+Function Get-ArmKeyVault
+{
+    [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='ByFilter')]
+    param
+    (
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='ByFilter')]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='ByName')]
+        [System.String]
+        $SubscriptionId,
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='ByName')]
+        [System.String]
+        $ResourceGroupName,
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='ByName')]
+        [System.String]
+        $VaultName,
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='ByFilter')]
+        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='ByName')]
+        [String]
+        $AccessToken,
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='ByFilter')]
+        [String]
+        $Filter="resourceType eq 'Microsoft.KeyVault/vaults'",
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='ByFilter')]
+        [int]
+        $Top,
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$false,ParameterSetName='ByFilter')]          
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$false,ParameterSetName='ByName')]
+        [System.Uri]
+        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$false,ParameterSetName='ByFilter')]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$false,ParameterSetName='ByName')]
+        [System.String]
+        $ApiVersion="2017-06-01"
+    )
+
+    BEGIN
+    {
+        $ArmQuery="api-version=$ApiVersion"
+        $ArmUriBld=New-Object System.UriBuilder($ApiEndpoint)       
+        $RequestParams=@{
+            ContentType='application/json';
+            AdditionalHeaders=@{Accept="application/json";};
+            AccessToken=$AccessToken;
+            Method='GET'
+        }        
+    }
+    PROCESS
+    {
+        if($PSCmdlet.ParameterSetName -eq 'ByName')
+        {
+            $ArmQuery="api-version=2016-10-01"
+            $ArmUriBld.Path="/subscriptions/$SubscriptionId/resourceGroups/$ResourceGroupName/providers/Microsoft.KeyVault/vaults/$VaultName"
+        }
+        else
+        {
+            $ArmUriBld.Path="/subscriptions/$SubscriptionId/resources"
+            $ArmQuery+="&`$filter=$($Filter)"
+            if($Top -gt 0)
+            {
+                $ArmQuery+="&Top=$($Top)"
+            }
+        }
+        $ArmUriBld.Query=$ArmQuery
+        $RequestParams.Uri=$ArmUriBld.Uri
+        $ArmResult=Invoke-ArmRequest @RequestParams
+        Write-Output $ArmResult
+    }
+
+}
+
+#Get Secrets
+
+#Create Secret
+
+#endregion
