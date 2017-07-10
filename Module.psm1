@@ -30,6 +30,7 @@ $Script:DefaultMonitorApiVersion='2016-03-01'
 $Script:ClassicMonitorApiVersion='2014-06-01'
 $Script:DefaultEventLogApiVersion="2014-04-01"
 $Script:DefaultArmFrontDoor='https://management.azure.com'
+$Script:DefaultKeyVaultApiVersion='2016-10-01'
 #endregion
 
 #region Helpers
@@ -5316,7 +5317,7 @@ Function Get-ArmKeyVault
     {
         if($PSCmdlet.ParameterSetName -eq 'ByName')
         {
-            $ArmQuery="api-version=2016-10-01"
+            $ArmQuery="api-version=$($Script:DefaultKeyVaultApiVersion)"
             $ArmUriBld.Path="/subscriptions/$SubscriptionId/resourceGroups/$ResourceGroupName/providers/Microsoft.KeyVault/vaults/$VaultName"
         }
         else
