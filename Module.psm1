@@ -5035,7 +5035,44 @@ Function Get-ArmPlatformImageVersion
 
 #region KeyVault
 
-#Create KeyVault
+<#
+    .SYNOPSIS
+        Creates a new key vault
+    .PARAMETER SubscriptionId
+        The subscription id
+    .PARAMETER ResourceGroupName
+        The resource group name
+    .PARAMETER VaultName
+        The vault name
+    .PARAMETER TenantId
+        The associated Tenant Id for authentication
+    .PARAMETER Location
+        The placement region
+    .PARAMETER ObjectId
+        The associated directory object
+    .PARAMETER Sku
+        The Sku Name
+    .PARAMETER SkuFamily
+        The Sku Family
+    .PARAMETER CreateMode
+        The vault creation mode 
+    .PARAMETER Tags
+        Metadata Tags to be added
+    .PARAMETER EnableForDeployment
+        Whether to enable for virtual machine use
+    .PARAMETER EnableForDiskEncryption
+        Whether to enable for disk encryption
+    .PARAMETER EnableForTemplateDeployment
+        Whether to enable for ARM templates
+    .PARAMETER EnableSoftDelete
+        Whether to enable soft delete functionality
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+#>
 Function New-ArmKeyVault
 {
     [CmdletBinding(ConfirmImpact='None')]
@@ -5058,10 +5095,7 @@ Function New-ArmKeyVault
         $Location,        
         [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String]
-        $ObjectId,
-        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
-        [System.String]
-        $VaultUri,        
+        $ObjectId, 
         [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $Sku='Standard',
@@ -5152,7 +5186,22 @@ Function New-ArmKeyVault
     }
 }
 
-#Delete KeyVault
+<#
+    .SYNOPSIS
+        Deletes a key vault
+    .PARAMETER SubscriptionId
+        The subscription id
+    .PARAMETER ResourceGroupName
+        The resource group name
+    .PARAMETER VaultName
+        The vault name
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+#>
 Function Remove-ArmKeyVault
 {
     [CmdletBinding(DefaultParameterSetName='ByName')]
@@ -5197,7 +5246,26 @@ Function Remove-ArmKeyVault
     }
 }
 
-#Get KeyVault
+<#
+    .SYNOPSIS
+        Retreives Key Vault(s)
+    .PARAMETER SubscriptionId
+        The subscription id
+    .PARAMETER ResourceGroupName
+        The resource group name
+    .PARAMETER VaultName
+        The vault name
+    .PARAMETER AccessToken
+        The OAuth access token
+    .PARAMETER ApiEndpoint
+        The ARM api endpoint
+    .PARAMETER ApiVersion
+        The ARM api version
+    .PARAMETER Filter
+        The OData filter
+    .PARAMETER Top
+        Limit the result set returned
+#>
 Function Get-ArmKeyVault
 {
     [CmdletBinding(ConfirmImpact='None',DefaultParameterSetName='ByFilter')]
@@ -5267,9 +5335,5 @@ Function Get-ArmKeyVault
     }
 
 }
-
-#Get Secrets
-
-#Create Secret
 
 #endregion
