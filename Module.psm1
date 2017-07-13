@@ -5094,7 +5094,7 @@ Function New-ArmKeyVault
         [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $Location,        
-        [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $ObjectId, 
         [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
@@ -5106,6 +5106,12 @@ Function New-ArmKeyVault
         [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [System.String]
         $CreateMode='default',
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
+        [System.String[]]
+        $AllowedKeyPermissions=@('all'),
+        [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
+        [System.String[]]
+        $AllowedSecretPermissions=@('all'),
         [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
         [System.Collections.IDictionary]
         $Tags,
@@ -5151,14 +5157,17 @@ Function New-ArmKeyVault
                 name=$Sku;
                 family=$SkuFamily;
         };
-        $AppPermission=New-Object PSObject @{
-            "keys"=@('all');
-            "secrets"=@('all');
-        }
-        $VaultAccessPolicy=New-Object PSObject @{
-            "tenantId"=$TenantId;
-            "objectId"=$ObjectId;
-            "permissions"=$AppPermission;
+        $VaultAccessPolicy=@()
+        if([string]::IsNullOrEmpty($ObjectId) -eq $false)
+        {
+            $VaultAccessPolicy=@(New-Object PSObject @{
+                "tenantId"=$TenantId;
+                "objectId"=$ObjectId;
+                "permissions"=@{
+                    "keys"=@($AllowedKeyPermissions);
+                    "secrets"=@($AllowedSecretPermissions);
+                }
+            })
         }
         $VaultProperties=[ordered]@{
             tenantId=$TenantId;
@@ -5330,7 +5339,7 @@ Function Get-ArmKeyVault
             }
         }
         $ArmUriBld.Query=$ArmQuery
-        $RequestParams.Uri=$ArmUriBld.Uri
+        $RequestParams['Uri']=$ArmUriBld.Uri
         $ArmResult=Invoke-ArmRequest @RequestParams
         Write-Output $ArmResult
     }
