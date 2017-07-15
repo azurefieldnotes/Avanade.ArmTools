@@ -5080,62 +5080,43 @@ Function New-ArmKeyVault
     param
     (
         [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
-        [System.String]
-        $SubscriptionId,
+        [System.String]$SubscriptionId,
         [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
-        [System.String]
-        $ResourceGroupName,
+        [System.String]$ResourceGroupName,
         [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
-        [System.String]
-        $VaultName,
+        [System.String]$VaultName,
         [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
-        [System.String]
-        $TenantId,       
+        [System.String]$TenantId,       
         [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
-        [System.String]
-        $Location,        
+        [System.String]$Location,        
         [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
-        [System.String]
-        $ObjectId, 
+        [System.String]$ObjectId, 
         [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
-        [System.String]
-        $Sku='Standard',
+        [System.String]$Sku='Standard',
         [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
-        [System.String]
-        $SkuFamily='A',        
+        [System.String]$SkuFamily='A',        
         [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
-        [System.String]
-        $CreateMode='default',
+        [System.String]$CreateMode='default',
         [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
-        [System.String[]]
-        $AllowedKeyPermissions=@('all'),
+        [System.String[]]$AllowedKeyPermissions=@('all'),
         [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
-        [System.String[]]
-        $AllowedSecretPermissions=@('all'),
+        [System.String[]]$AllowedSecretPermissions=@('all'),
         [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
-        [System.Collections.IDictionary]
-        $Tags,
+        [System.Collections.IDictionary]$Tags,
         [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
-        [Switch]
-        $EnableForDeployment,
+        [Switch]$EnableForDeployment,
         [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
-        [Switch]
-        $EnableForDiskEncryption,
+        [Switch]$EnableForDiskEncryption,
         [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
-        [Switch]
-        $EnableForTemplateDeployment,
+        [Switch]$EnableForTemplateDeployment,
         [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
-        [Switch]
-        $EnableSoftDelete,          
+        [Switch]$EnableSoftDelete,          
         [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true)]
-        [String]
-        $AccessToken,
+        [String]$AccessToken,
         [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
-        [System.Uri]
-        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [System.Uri]$ApiEndpoint=$Script:DefaultArmFrontDoor,
         [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true)]
-        [System.String]
-        $ApiVersion="2016-10-01"
+        [System.String]$ApiVersion="2016-10-01"
     )
     BEGIN
     {
@@ -5218,23 +5199,17 @@ Function Remove-ArmKeyVault
     param
     (
         [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='ByName')]
-        [System.String]
-        $SubscriptionId,
+        [System.String]$SubscriptionId,
         [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='ByName')]
-        [System.String]
-        $ResourceGroupName,
+        [System.String]$ResourceGroupName,
         [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$true,ParameterSetName='ByName')]
-        [System.String]
-        $VaultName,
+        [System.String]$VaultName,
         [Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,ParameterSetName='ByName')]
-        [String]
-        $AccessToken,
+        [String]$AccessToken,
         [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$false,ParameterSetName='ByName')]
-        [System.Uri]
-        $ApiEndpoint=$Script:DefaultArmFrontDoor,
+        [System.Uri]$ApiEndpoint=$Script:DefaultArmFrontDoor,
         [Parameter(Mandatory=$false,ValueFromPipelineByPropertyName=$false,ParameterSetName='ByName')]
-        [System.String]
-        $ApiVersion="2016-10-01"
+        [System.String]$ApiVersion="2016-10-01"
     )
     BEGIN
     {
